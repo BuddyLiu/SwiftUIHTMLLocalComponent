@@ -14,8 +14,8 @@ import SwiftUI
 ///
 /// 特点:
 /// - 样式多样性来自 CSS,弥补 SwiftUI 原生富文本的不足;
-/// - 高度自适应:内容多高,组件就多高(默认关闭 WebView 内滚动,由外层滚动);
-/// - 长按 / 滑动 / 双指缩放默认全部关闭,可通过配置开启;
+/// - 高度自适应:内容多高,组件就多高,由外层 SwiftUI `ScrollView` 整体滚动(WebView 自身不内置滚动);
+/// - 长按 / 双指缩放默认全部关闭,可通过配置开启;
 /// - 支持点击回调:`<a href>` 与带 `data-tap` 的元素。
 ///
 /// ## 纯文本 + 链式标记(推荐)
@@ -253,7 +253,7 @@ public struct HTMLRichText: View {
             // 展示高度:
             // - 外层不限高(自由高度)→ proxy 给到的可用高度即内容高度,直接用内容高度;
             // - 外层给了更小高度(固定高度容器,如 .frame(height: 140))→ 按容器高度收进来,
-            //   超出的部分直接裁切(内部滚动仅由 config.isScrollEnabled 控制,不再自动开启)。
+            //   超出的部分直接裁切(WebView 自身不内置滚动)。
             let availableHeight = proxy.size.height
             let displayHeight = max(0, availableHeight > 1 ? min(contentHeight, availableHeight) : contentHeight)
             HTMLRichTextView(
@@ -324,8 +324,7 @@ public struct HTMLRichText: View {
         }
         // 高度只设「上限 + 理想」、不再写死,让外层容器的高度约束能流进来:
         // · 外层自由(ScrollView / VStack 不限高)→ 按 idealHeight = 内容高度报告,组件高度 = 内容高度;
-        // · 外层给了更小高度(固定高度容器)→ 渲染成容器给的高度,内容多出的部分裁切掉
-        //   (要内部滚动需显式 config.isScrollEnabled = true)。
+        // · 外层给了更小高度(固定高度容器)→ 渲染成容器给的高度,内容多出的部分裁切掉(WebView 不内置滚动)。
         .frame(minHeight: 0, idealHeight: contentHeight, maxHeight: max(contentHeight, 0))
     }
 

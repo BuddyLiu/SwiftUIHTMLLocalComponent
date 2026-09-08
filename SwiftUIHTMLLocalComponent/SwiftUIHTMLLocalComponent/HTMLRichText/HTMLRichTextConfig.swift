@@ -15,7 +15,6 @@ import SwiftUI
 /// config.fontSize = 16
 /// config.lineHeight = 1.8
 /// config.linkColor = .orange
-/// config.isScrollEnabled = false
 /// ```
 public struct HTMLRichTextConfig {
 
@@ -61,12 +60,7 @@ public struct HTMLRichTextConfig {
     /// 若未设置但历史缓存命中(同内容 + 同容器宽度),同样会直接复用缓存高度。
     public var estimatedHeight: CGFloat? = nil
 
-    // MARK: - WebView 交互开关(默认全部关闭:不可长按 / 滑动 / 缩放)
-
-    /// 是否允许竖直滚动。默认 false —— 内容由外层 SwiftUI `ScrollView` 滚动,
-    /// 组件自身高度会自动等于内容高度。若放进**固定高度**容器且想内部滑动查看,
-    /// 需显式开启此项(不会再自动开启内部滚动)。
-    public var isScrollEnabled: Bool = false
+    // MARK: - WebView 交互开关(默认全部关闭:不可长按 / 缩放)
 
     /// 是否允许双指缩放。默认 false(通过 viewport meta 禁用)。
     public var isZoomEnabled: Bool = false
@@ -109,7 +103,6 @@ public struct HTMLRichTextConfig {
         customCSS: String? = nil,
         imageStyle: HTMLRichTextImageStyle = .default,
         isTransparent: Bool = true,
-        isScrollEnabled: Bool = false,
         isZoomEnabled: Bool = false,
         isTextSelectionEnabled: Bool = false,
         isLinkPreviewEnabled: Bool = false,
@@ -130,7 +123,6 @@ public struct HTMLRichTextConfig {
         self.customCSS = customCSS
         self.imageStyle = imageStyle
         self.isTransparent = isTransparent
-        self.isScrollEnabled = isScrollEnabled
         self.isZoomEnabled = isZoomEnabled
         self.isTextSelectionEnabled = isTextSelectionEnabled
         self.isLinkPreviewEnabled = isLinkPreviewEnabled

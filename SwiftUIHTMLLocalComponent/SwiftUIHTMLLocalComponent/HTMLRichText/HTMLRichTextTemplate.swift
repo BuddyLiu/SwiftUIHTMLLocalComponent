@@ -181,12 +181,17 @@ enum HTMLRichTextTemplate {
         var w = window.__htmlRichTextWidth || 0;
         if (!(w > 0)) return;               // 还没拿到真实容器宽度,跳过
         syncViewport(w);                    // 保证按容器宽度排版
-        // 高度只测内容本身(body.scrollHeight / offsetHeight),不能取
-        // documentElement.scrollHeight —— html 是初始包含块,其 scrollHeight
-        // 「至少等于视口高度」:当首帧 frame 比内容高(预估高度偏大 / 固定容器设
-        // 得太高)时会把视口高度误报到内容高度,导致「内容比预估矮」时组件永远
-        // 不按实际内容收身(高度被黏在预估值上)。
+        // 高度只测内容本身,不能取 documentElement.scrollHeight —— html 是初始包含块,
+        // 其 scrollHeight「至少等于视口高度」:当首帧 frame 比内容高(预估高度偏大 /
+        // 固定容器设得太高)时会把视口高度误报到内容高度,导致「内容比预估矮」时组件
+        // 永远不按实际内容收身(高度被黏在预估值上)。
+        // body.getBoundingClientRect().bottom 是内容实际落到的视口坐标底部:当 WebKit
+        // 因布局往返给页面累积了一小段顶部内边距/回弹时,它比 scrollHeight 更接近
+        // 「把内容完整显示出来所需的高度」,取两者最大值避免最后一行被裁。
         var h = Math.max(b ? b.scrollHeight : 0, b ? b.offsetHeight : 0);
+        var bodyBottom = (b && b.getBoundingClientRect) ? b.getBoundingClientRect().bottom : 0;
+        if (bodyBottom > h) h = Math.ceil(bodyBottom);
+        h += 1;   // 1px 兜底:避免内容底正好落在整数像素边界上被裁掉
         var ww = Math.max(d ? d.scrollWidth : 0, b ? b.scrollWidth : 0);
         // 与上次上报完全相同则跳过,避免高度自适应过程中反复 postMessage 驱动 SwiftUI 重绘
         if (h === lastH && ww === lastW) return;

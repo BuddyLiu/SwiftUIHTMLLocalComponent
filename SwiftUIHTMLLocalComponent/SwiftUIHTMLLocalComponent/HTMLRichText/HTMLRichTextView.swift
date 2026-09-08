@@ -32,18 +32,18 @@ struct HTMLRichTextView: UIViewRepresentable {
             configuration: makeConfiguration(context: context)
         )
         webView.navigationDelegate = context.coordinator
-        // 内部滚动完全由 config.isScrollEnabled 决定(默认关闭,内容交给外层滚动);
-        // 固定高度容器装不下时内容直接裁切。
-        configureAppearance(webView, scrollEnabled: config.isScrollEnabled)
+        // WebView 自身不内置滚动(内容交给外层 SwiftUI 滚动);放进固定高度容器
+        // 装不下时,多出的内容直接裁切。
+        configureAppearance(webView)
         // 首次加载放到 updateUIView:此时 WebView 才能拿到真实容器宽度,
         // 用固定宽度排版,避免 `width=device-width` 在窄容器里引发高度膨胀。
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // 外观类原生属性(背景色 / 滚动开关等)即时同步,无需重载页面。
-        // 滚动只跟 config.isScrollEnabled 走(默认关闭,内容由外层滚动)。
-        configureAppearance(webView, scrollEnabled: config.isScrollEnabled)
+        // 外观类原生属性(背景色 / 长按预览等)即时同步,无需重载页面。
+        // WebView 自身不内置滚动,内容多出的部分由外层容器裁切。
+        configureAppearance(webView)
         webView.allowsLinkPreview = config.isLinkPreviewEnabled
 
         // 布局宽度变化时才同步给 JS 并按该宽度重测高度(避免高度反馈循环里反复注入)。
@@ -100,7 +100,7 @@ struct HTMLRichTextView: UIViewRepresentable {
         return configuration
     }
 
-    private func configureAppearance(_ webView: WKWebView, scrollEnabled: Bool) {
+    private func configureAppearance(_ webView: WKWebView) {
         webView.isOpaque = false
         // 背景:透明模式用宿主背景无缝融合;非透明模式在加载阶段直接铺上配置的背景色,
         // 避免「先白底/先透明、CSS 生效后才变色」的加载闪烁。
@@ -118,8 +118,8 @@ struct HTMLRichTextView: UIViewRepresentable {
             }
         }
         webView.scrollView.backgroundColor = webView.backgroundColor ?? .clear
-        webView.scrollView.isScrollEnabled = scrollEnabled
-        webView.scrollView.bounces = scrollEnabled
+        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.bounces = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.allowsLinkPreview = config.isLinkPreviewEnabled
         webView.scrollView.showsHorizontalScrollIndicator = false

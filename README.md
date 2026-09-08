@@ -6,12 +6,12 @@
 
 - **独立组件**:`HTMLRichText` 直接嵌入 SwiftUI 视图,参数全配置;
 - **声明式链式入口**:不写 HTML,传**普通文本**,用 `.baseStyle / .linkItem / .imageItem` 声明式标记基础样式与可点击/插图片段,组件内部编译成 HTML;
-- **高度自适应**:内容多高,组件多高,流畅嵌入外层 `ScrollView`(默认关闭 WebView 内部滚动,内容与预估高度不符时按实际高度收身;放入**固定高度**容器装不下时内容直接裁切,需要内部滑动时显式开 `isScrollEnabled = true`);
+- **高度自适应**:内容多高,组件多高,由外层 `ScrollView` 整体滚动(WebView 自身**不内置滚动**);内容与预估高度不符时按实际高度收身,外层固定高度放不下内容时多出的部分直接裁切;
 - **样式丰富**:自定义字号、行高、字距、文本颜色、链接颜色、对齐、字体族、自定义 CSS;
 - **交互全部回调**:`<a href>` 链接与带 `data-tap` 的任意元素点击后回调给 SwiftUI,`<a>` 原生跳转被拦截,绝不离开当前页面;
 - **图片交互可配**:每张图片可独立配置**点击开关**(`isTapEnabled`)、**长按开关 + 独立长按回调**(`isLongPressEnabled` + `onLongPress`),以及**排布方式**(内联 / 块级 / 左·右浮动图文混排)、**大小 / 外边距 / 背景色 / 边框粗细与颜色**,预设快捷(.card / .bordered / .floatLeft…)给出一组合理默认值;
 - **生命周期回调**:`onStateChange` 一个回调收敛 `loading / rendered / ready(高度) / failed(描述)` 四种状态,便于加载占位、内容就绪判定与失败兜底;
-- **默认不可长按 / 滑动 / 缩放**:WebView 的光标、文本选中、长按菜单、长按预览、双指缩放默认全部关闭,按需通过配置开启;
+- **默认不可长按 / 缩放**:WebView 的光标、文本选中、长按菜单、长按预览、双指缩放默认全部关闭,按需通过配置开启;
 - **本地优先**:HTML 片段、本地 `.html` 文件、相对路径图片资源全部本地加载,无需网络;
 - **性能友好**:渲染参数用指纹比对,未变化不重载;容器宽度未变化不重复注入 JS;高度随内容变化增量上报,变化消息去重合并;
 - **加载即最终样式**:首帧用「预估高度 / 历史缓存高度」撑起布局,内容一渲染出来就是最终高度,没有先塌成 0 再跳变的闪烁;
@@ -257,7 +257,6 @@ HTMLRichText(content: "卡片图 说明文字…", config: .init(baseURL: .main.
 | `baseURL` | `URL?` | `Bundle.main.bundleURL` | 相对路径资源的解析根目录 |
 | `inlineLocalImages` | `Bool` | `true` | 是否把文档内指向本地文件的 `<img>` 内联成 `data:` URI(图片随文档一起返回,不走子资源请求,可规避 WebKit 偶发丢图;HTML 字节数约 ×1.33。仅 `baseURL` 下真实存在的本地文件内联,网络 / data: / blob: 不受影响) |
 | `preferredColorScheme` | `ColorScheme?` | `nil` | 强制浅/深色取色,默认跟随系统 |
-| `isScrollEnabled` | `Bool` | `false` | 允许 WebView 内部滚动(**默认关**,内容由外层滚动)。不会**自动**开启:放进固定高度容器装不下时直接裁切,要在内部滑动需显式开启此开关 |
 | `isZoomEnabled` | `Bool` | `false` | 允许双指缩放(**默认关**) |
 | `isTextSelectionEnabled` | `Bool` | `false` | 允许文本选中(**默认关**) |
 | `isLinkPreviewEnabled` | `Bool` | `false` | 允许长按链接预览(**默认关**) |
@@ -267,11 +266,11 @@ HTMLRichText(content: "卡片图 说明文字…", config: .init(baseURL: .main.
 
 ## 高度与滚动(适配任意外层容器)
 
-组件高度**始终等于内容的实际渲染高度**(把 `.frame(height:)` 交给外层),滚动策略再按外层容器决定:
+组件高度**始终等于内容的实际渲染高度**(把 `.frame(height:)` 交给外层),滚动统一交给外层容器处理:
 
-- **默认(外层限高,内容放得下)**:组件高度 = 内容高度,内外都不滚动,内容完整展示。
-- **外层固定高度放不下内容**:内容**直接裁切**。需要在这类固定高度里滑动查看时,给 `config.isScrollEnabled = true` 显式开启 WebView 内部滚动。
-- **内容比预估高度小(`estimatedHeight` 偏大)**:就绪后按**实际内容高度**收身展示,不会黏在预估值上。JS 侧用 `body.scrollHeight / offsetHeight` 测高(不用 `documentElement.scrollHeight` —— html 是初始包含块,`scrollHeight` 至少等于视口高度,首帧 frame 比内容高时会误把视口高度报成内容高度,导致组件永远不按实际内容收身)。
+- **默认(外层不限高)**:组件高度 = 内容高度,内容完整展示,由外层 `ScrollView` 滚动。
+- **外层固定高度放不下内容**:内容**直接裁切**(WebView 自身不内置滚动,不会出现组件内部的第二套滚动条)。
+- **内容比预估高度小(`estimatedHeight` 偏大)**:就绪后按**实际内容高度**收身展示,不会黏在预估值上。JS 侧用 `body.scrollHeight / offsetHeight` 测高,并把直接块子元素 `getBoundingClientRect()` 的实际底部一并取最大值(不取 `documentElement.scrollHeight` —— html 是初始包含块,`scrollHeight` 至少等于视口高度,首帧 frame 比内容高时会误把视口高度报成内容高度,导致组件永远不按实际内容收身)。
 
 ## 加载体验优化
 
@@ -392,9 +391,9 @@ HTMLRichText(
 
 1. **HTML 模板**:用户传入的 HTML 片段被包成完整文档(`<meta viewport>` + 由配置生成的 CSS + 注入的 JS 桥)。颜色值在 Swift 侧按目标深浅色解析成 HEX 写入 CSS,`isTransparent` 时页面背景透明,与 SwiftUI 背景无缝衔接。
 2. **本地加载**:主文档与相对路径资源走自定义 `hrtlocal://` scheme(`WKURLSchemeHandler`)在 `baseURL` 沙箱内读取,不产生临时文件,也规避 `loadFileURL` 的读权限限制。主文档返回时,文档内指向本地文件的 `<img>` 默认先被内联成 `data:` URI(`inlineLocalImages`,可关闭),图片随文档一起解码,不经过子资源请求链路。主文档的 MIME 必须为 `text/html` 且字符集独立传 `textEncodingName`,不能拼进 MIME。
-3. **高度自适应**:JS 桥(`htmlRichTextBridge`,文档解析前注入)在 `DOMContentLoaded`、`resize`、图片 `load`、`MutationObserver(body)` 触发时上报 `max(body.scrollHeight, body.offsetHeight)`,SwiftUI 侧据此设置组件高度。**排版按容器真实宽度**(Swift 把 `bounds.width` 写入 `window.__htmlRichTextWidth`,JS 同步 viewport 的 `width`),避免窄卡片内按全屏宽度排版导致的横向溢出与高度反馈放大。
-4. **交互开关**:长按、缩放分别通过 CSS(`-webkit-user-select` / `-webkit-touch-callout`)、viewport meta(`user-scalable / maximum-scale`)与原生属性(`allowsLinkPreview` / `isScrollEnabled`)三层控制,全部默认关闭。注意 `-webkit-touch-callout` **不继承**、只对 `<a>` / `<img>` 元素本身生效,所以关闭系统长按菜单时按整份文档声明(而不是只写 body),图片长按不再弹「存储图像/拷贝」;图片另设 `-webkit-user-drag: none` 防拖拽。**图片长按回调**由 JS 以 touch 事件判定(touchstart 后 450ms 内未移动 / 松开),通过 `longPress` 消息独立桥接回 SwiftUI,并与随后的 click 去重,长按不误触点按回调。
-5. **渲染指纹(RenderKey)**:只有影响页面渲染的参数(文案、样式、深浅色等)变化才重载 WebView;纯交互开关(`isScrollEnabled` 等)跳过重载即时同步。容器宽度未变化时不重复注入 JS,从源头减少 WebView 这个重量级视图的无效工作。
+3. **高度自适应**:JS 桥(`htmlRichTextBridge`,文档解析前注入)在 `DOMContentLoaded`、`resize`、图片 `load`、`MutationObserver(body)` 触发时上报 `max(body.scrollHeight, body.offsetHeight)` 与直接块子元素的实际底部(避免 WebKit 对最后一个块默认底 margin 的口径偏差把最后一行裁掉),SwiftUI 侧据此设置组件高度。**排版按容器真实宽度**(Swift 把 `bounds.width` 写入 `window.__htmlRichTextWidth`,JS 同步 viewport 的 `width`),避免窄卡片内按全屏宽度排版导致的横向溢出与高度反馈放大。
+4. **交互开关**:文本选中 / 长按菜单 / 缩放分别通过 CSS(`-webkit-user-select` / `-webkit-touch-callout`)与 viewport meta(`user-scalable / maximum-scale`)控制,长按链接预览用原生属性(`allowsLinkPreview`)控制,全部默认关闭。注意 `-webkit-touch-callout` **不继承**、只对 `<a>` / `<img>` 元素本身生效,所以关闭系统长按菜单时按整份文档声明(而不是只写 body),图片长按不再弹「存储图像/拷贝」;图片另设 `-webkit-user-drag: none` 防拖拽。**图片长按回调**由 JS 以 touch 事件判定(touchstart 后 450ms 内未移动 / 松开),通过 `longPress` 消息独立桥接回 SwiftUI,并与随后的 click 去重,长按不误触点按回调。
+5. **渲染指纹(RenderKey)**:只有影响页面渲染的参数(文案、样式、深浅色等)变化才重载 WebView;与渲染无关的少量原生属性(`allowsLinkPreview`)即时同步。容器宽度未变化时不重复注入 JS,从源头减少 WebView 这个重量级视图的无效工作。
 
 ## 演示 App
 
@@ -404,12 +403,12 @@ HTMLRichText(
 2. 图文混排(相对路径加载本地 `demo-banner.png`);
 3. 点击交互(链接 + `data-tap` 卡片,顶部横幅实时展示回调);
 4. 样式定制(字号/行高/颜色/对齐/字体族/自定义 CSS 对比);
-5. WebView 开关(内部滚动/长按选择/双指缩放开关效果);
+5. WebView 开关(长按选择/双指缩放开关效果);
 6. 本地 HTML 文件(`localHTMLNamed:` 加载 `sample-article.html`);
 7. 纯文本 + 链式标记(`.baseStyle / .linkItem / .imageItem`,action + onTap 并存);
 8. 配套工具类(`HTMLRichTextTools`:预估高度 / HEX 取色 / 行内 CSS);
 9. 图片交互与样式细化(内联 / 块级卡片 / 左浮动图文混排、点击禁用、长按回调、边框 / 背景 / 外边距预设);
-10. 固定高度容器(超出裁切)与预估高度收身。
+10. 预估高度收身 / 高度缓存。
 
 构建:
 

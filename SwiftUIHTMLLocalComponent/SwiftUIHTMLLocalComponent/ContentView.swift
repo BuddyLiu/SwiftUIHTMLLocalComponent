@@ -52,25 +52,15 @@ struct ContentView: View {
                         }
                         .id(4)
                         
-                        SectionCard("5️⃣ WebView 开关:内部滚动 / 长按 / 缩放") {
-                            Text("· 允许内部滚动(高度固定 140,超出可滑动)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            HTMLRichText(html: Self.longParagraph,
-                                         config: .init(isScrollEnabled: true))
-                            .frame(height: 140)
-                            .background(Color(.secondarySystemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            
+                        SectionCard("5️⃣ WebView 开关:长按选择 / 双指缩放") {
                             Text("· 允许长按:可选中文本、弹出预览与复制菜单")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .padding(.top, 8)
                             HTMLRichText(html: Self.selectableHTML,
                                          config: .init(isTextSelectionEnabled: true,
                                                        isLinkPreviewEnabled: true,
                                                        isTouchCalloutEnabled: true))
-                            
+
                             Text("· 允许双指缩放")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -245,26 +235,8 @@ struct ContentView: View {
                         }
                         .id(9)
 
-                        SectionCard("🔟 固定高度容器(超出裁切)/ 预估高度收身") {
-                            Text("外层容器高度不足以展示全部内容时,内容**直接裁切**;需要内部滚动请显式 `isScrollEnabled: true`。下方固定 140pt、内容更长,可对照观察裁切效果。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            let longText = "这个容器被固定成 140pt 高,但这段文字比较长,内容高度超过了容器。组件不会自动打开内部滚动——超出 140pt 的部分会被裁掉;默认(容器不限高)时组件高度 = 内容高度,由外层 ScrollView 滚动。若要在这类固定高度里滑动查看,请给 config 设置 isScrollEnabled = true。再多写几行,让内容明显高于 140pt,方便观察裁切边界。"
-                            HTMLRichText(
-                                content: longText,
-                                onTap: { lastTap = Self.describe($0) },
-                                onStateChange: { state in
-                                    if case .ready(let h) = state {
-                                        print("固定容器演示 ready(\(Int(h))pt)")
-                                    }
-                                }
-                            )
-                            .baseStyle(.init(fontSize: 15, baseURL: Self.resourceBaseURL()))
-                            .background(Color(uiColor: .secondarySystemFill))
-
-                            Divider()
-
-                            Text("实际内容 **比预估高度小** 时,就绪后按实际内容高度展示(`estimatedHeight: 180` vs 实际几十 pt)。")
+                        SectionCard("🔟 预估高度收身 / 高度缓存") {
+                            Text("内容 **比预估高度小** 时,就绪后按实际内容高度展示;同一内容再次出现会复用缓存高度,首帧不塌缩。")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             HTMLRichText(
@@ -344,14 +316,6 @@ struct ContentView: View {
     """
 
     private static let styleHTML = "<p><strong>加粗强调</strong> <b>加粗</b> <i>斜体</i>,<a href=\"https://example.com\">链接</a>,普通文本。</p>"
-
-    private static let longParagraph = """
-    <p>这段内容开启了内部滚动:<code>isScrollEnabled = true</code>,高度被固定为 140,
-    超出部分在 WebView 内部滑动。默认是 false,由外层 SwiftUI ScrollView 整体滚动。</p>
-    <p>这里是第二行,用于把内容撑到超过可视高度。</p>
-    <p>这里是第三行……</p>
-    <p>这里是第四行……</p>
-    """
 
     private static let selectableHTML = """
     <p>这段开启了<b>长按能力</b>:可以<a href="https://example.com">长按链接预览</a>,
