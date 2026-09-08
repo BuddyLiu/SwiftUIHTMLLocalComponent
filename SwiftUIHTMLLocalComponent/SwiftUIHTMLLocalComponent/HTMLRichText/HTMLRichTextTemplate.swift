@@ -77,6 +77,7 @@ enum HTMLRichTextTemplate {
         var backdrop = ""
         var frostedRim = ""
         var frostedFallback = ""
+        var frostedGlass = ""
         switch config.effectiveBackgroundStyle {
         case .transparent:
             background = "transparent"
@@ -88,6 +89,11 @@ enum HTMLRichTextTemplate {
             backdrop = "\n            -webkit-backdrop-filter: \(filter);\n            backdrop-filter: \(filter);"
             frostedRim = frostedRimCSS(style)
             frostedFallback = frostedFallbackCSS(style, isDark: isDark)
+            // 空内容(无文本毛玻璃视图)时 html/body 盒会塌成 0 高,
+            // 背景色会向画布传播(色调仍可见)但 backdrop-filter 不会传播,
+            // 模糊区=0 → 只有一层纯色调、没有玻璃感。给 html 一个整视口高的盒,
+            // 毛玻璃滤镜才覆盖整块玻璃。测高走 body(不用 html),文本卡片高度不受影响。
+            frostedGlass = "\n        html {\n            min-height: 100vh;\n        }"
         }
 
         let selection: String = config.isTextSelectionEnabled ? "text" : "none"
@@ -139,6 +145,8 @@ enum HTMLRichTextTemplate {
         """
         // 毛玻璃上边缘光(顶部内高光)单独追加在 html 规则上(见 frostedRimCSS)
         css += frostedRim
+        // 空内容毛玻璃:html 盒强制整视口高(见 frostedGlass 注释)
+        css += frostedGlass
         // 不支持 backdrop-filter 的引擎自动降级为半透明白(见 frostedFallbackCSS)
         css += frostedFallback
         // `-webkit-touch-callout` **不继承**:只对 `<a>` / `<img>` 元素本身生效,
