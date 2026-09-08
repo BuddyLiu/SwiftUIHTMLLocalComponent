@@ -267,10 +267,12 @@ struct ContentView: View {
                                 Circle().fill(.blue).frame(width: 40, height: 40).offset(x: 34, y: 86)
                                 Circle().fill(.green).frame(width: 64, height: 64).offset(x: 178, y: 92)
                                 HTMLRichText(
-                                    content: "毛玻璃段落:背景把渐变模糊透出来,文字保持清晰。可调 blurRadius / tintColor / tintOpacity / saturationAmount,也可用 .card() / .darkCard() 预设。"
+                                    content: "毛玻璃段落:背景把渐变模糊透出来,文字保持清晰。可调 blurRadius / tintColor / tintOpacity / saturationAmount / shineOpacity / rimOpacity,也可用 .card() / .darkCard() 预设。"
                                 )
-                                // 背景样式走 .baseStyle(config) 注入(纯文本入口的 config 由链式样式整体替换)
-                                .baseStyle(.init(backgroundStyle: .frosted(.init(blurRadius: 16, tintColor: .white, tintOpacity: 0.4, saturationAmount: 1.6))))
+                                // 背景样式走 .baseStyle(config) 注入(纯文本入口的 config 由链式样式整体替换)。
+                                // 边缘光(inner highlight + 描边)挂在 html 上,恒对齐组件边缘 —— 固定高度容器
+                                // 也能看到发丝描边;圆角由宿主 .clipShape 负责(毛玻璃块本身不做圆角)。
+                                .baseStyle(.init(backgroundStyle: .frosted(.card())))
                                 .padding(12)
                             }
                             .frame(height: 150)

@@ -70,17 +70,22 @@ enum HTMLRichTextTemplate {
         }
 
         // 背景:透明 / 纯色 / 毛玻璃(backdrop-filter 模糊背后透出的宿主内容)。
+        // 毛玻璃的基色、对角高光叠成多层 background(高光在上层、色调兜底),
+        // 边缘光(内阴影 + 描边)单独挂在 html 上 —— html 的盒恒等于视口,
+        // 不受 WebKit 内容偏移影响,边缘光总能对齐组件边缘。
         let background: String
         var backdrop = ""
+        var frostedRim = ""
         switch config.effectiveBackgroundStyle {
         case .transparent:
             background = "transparent"
         case .solid(let color):
             background = HTMLRichTextTools.cssColor(color, isDark: isDark)
         case .frosted(let style):
-            background = frostedTintCSS(style, isDark: isDark)
+            background = frostedBackgroundCSS(style, isDark: isDark)
             let filter = backdropFilterCSS(style)
             backdrop = "\n            -webkit-backdrop-filter: \(filter);\n            backdrop-filter: \(filter);"
+            frostedRim = frostedRimCSS(style)
         }
 
         let selection: String = config.isTextSelectionEnabled ? "text" : "none"
@@ -129,6 +134,8 @@ enum HTMLRichTextTemplate {
             text-decoration: none;
         }
         """
+        // 毛玻璃边缘光(内高光 + 描边)单独追加在 html 规则上(见 frostedRimCSS)
+        css += frostedRim
         // `-webkit-touch-callout` **不继承**:只对 `<a>` / `<img>` 元素本身生效,
         // 写在 body 上挡不住图片 —— 长按图片仍会弹系统「存储图像/拷贝/共享」菜单。
         // 关闭系统长按菜单时必须用通配符整份覆盖,链接与文档内所有图片才真正不可长按。
@@ -140,11 +147,41 @@ enum HTMLRichTextTemplate {
         return css
     }
 
-    /// 毛玻璃色调:`rgba(色调, tintOpacity × 色调自身alpha)`。
+    /// 毛玻璃基色:`rgba(色调, tintOpacity × 色调自身alpha)`。
     /// `tintColor` 为 nil 时按深浅色自动取白 / 近黑,nil 表示「跟随系统」。
+    /// 半透明基色是毛玻璃的前提 —— 完全不透会盖死背后的宿主内容。
     private static func frostedTintCSS(_ style: HTMLRichTextFrostedStyle, isDark: Bool) -> String {
         let tint = style.tintColor ?? (isDark ? Color(red: 0.06, green: 0.06, blue: 0.08) : .white)
         return HTMLRichTextTools.cssColor(tint, opacity: style.tintOpacity, isDark: isDark)
+    }
+
+    /// 毛玻璃的多层 `background` 值:`[对角高光渐变] , 基色`。
+    /// 高光渐变按 H5 高级毛玻璃的 135° 对角线从白渐隐到极淡黑,叠在基色之上,
+    /// 给出「晶莹剔透」的上光感;`shineOpacity = 0` 时只保留基色。
+    private static func frostedBackgroundCSS(_ style: HTMLRichTextFrostedStyle, isDark: Bool) -> String {
+        let tint = frostedTintCSS(style, isDark: isDark)
+        guard style.shineOpacity > 0 else { return tint }
+        let hi = min(1, max(0, style.shineOpacity))
+        let mid = hi * 0.12     // 中段近透明,渐变主过渡
+        let dark = hi * 0.12    // 尾部极淡黑,增加玻璃厚度感
+        let gradient = String(
+            format: "linear-gradient(135deg, rgba(255,255,255,%.2f) 0%%, rgba(255,255,255,%.2f) 50%%, rgba(0,0,0,%.2f) 100%%)",
+            hi, mid, dark
+        )
+        return "\(gradient), \(tint)"
+    }
+
+    /// 毛玻璃块的边缘光:顶部内高光 + 底部内微光 + 1px 发丝描边(用 `0 0 0 1px`
+    /// 的 box-shadow 充当描边,不占布局、不挤压内容)。
+    /// 挂在 `html` 上而非 `body`:html 的盒恒等于视口尺寸,WebKit 在布局往返中
+    /// 给 body 累积的顶部偏移(≈20px)不会把边缘光带偏,边缘光总能贴住组件边缘。
+    /// `rimOpacity = 0` 时返回空(不输出此规则)。
+    private static func frostedRimCSS(_ style: HTMLRichTextFrostedStyle) -> String {
+        let o = min(1, max(0, style.rimOpacity))
+        guard o > 0 else { return "" }
+        let edge = String(format: "%.2f", o)
+        let bottom = String(format: "%.2f", o * 0.4)
+        return "\n        html {\n            box-shadow: inset 0 1px 0 rgba(255,255,255,\(edge)),\n                        inset 0 -1px 0 rgba(255,255,255,\(bottom)),\n                        0 0 0 1px rgba(255,255,255,\(o));\n        }"
     }
 
     /// 毛玻璃滤镜片段:`blur(半径)[ saturate(倍数)]`。

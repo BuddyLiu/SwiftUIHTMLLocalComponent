@@ -276,16 +276,23 @@ HTMLRichText(content: "卡片图 说明文字…", config: .init(baseURL: .main.
 | `.frosted(HTMLRichTextFrostedStyle)` | **毛玻璃** | WebView 保持透明,文档内用 `backdrop-filter: blur(...) saturate(...)` 把背后的宿主内容模糊透出 |
 
 ```swift
-// 毛玻璃:叠在彩色宿主视图上,背后内容被模糊 + 白色色调透出
+// 毛玻璃:叠在彩色宿主视图上,背后内容被模糊 + 白色色调透出(高级毛玻璃预设 .card())
 HTMLRichText(content: "毛玻璃段落……", config: .init(
-    backgroundStyle: .frosted(HTMLRichTextFrostedStyle(
-        blurRadius: 16, tintColor: .white, tintOpacity: 0.4, saturationAmount: 1.6
-    ))
+    backgroundStyle: .frosted(.card())
 ))
 
 // 亦可经链式入口:.baseStyle(.init(backgroundStyle: .frosted(.card())))
 HTMLRichText(content: "卡片毛玻璃预设……").baseStyle(.init(backgroundStyle: .frosted(.card())))
+
+// 手动调参:通透明亮 + 强边缘光;不发丝描边时把 rimOpacity 置 0
+HTMLRichText(content: "自定义毛玻璃……", config: .init(
+    backgroundStyle: .frosted(HTMLRichTextFrostedStyle(
+        blurRadius: 20, tintColor: .white, tintOpacity: 0.15, saturationAmount: 1.8
+    ))
+))
 ```
+
+> 圆角由宿主负责:毛玻璃块本身不裁圆角(组件是整块 View 背景,不是独立卡片),需要圆角时在 SwiftUI 侧套 `.clipShape(RoundedRectangle(cornerRadius:))` 即可(演示里就是这么做的)。
 
 ### 毛玻璃参数(`HTMLRichTextFrostedStyle`)
 
@@ -293,12 +300,14 @@ HTMLRichText(content: "卡片毛玻璃预设……").baseStyle(.init(backgroundS
 |---|---|---|
 | `blurRadius` | `20` | 背景模糊半径(CSS px=pt,排版宽度按容器 pt 注入)。越大越糊;`0` = 只叠加色调不模糊 |
 | `tintColor` | `nil` | 叠加在模糊层上的色调;`nil` = 按深浅色自动取白/近黑,`.clear` = 不要色调只做纯模糊 |
-| `tintOpacity` | `0.4` | 色调不透明度(与色调自身 alpha 相乘后写进 `rgba()`) |
-| `saturationAmount` | `1.8` | 饱和度增强倍数,`nil` = 不写 `saturate()` |
-| 预设 `.card()` | — | 浅色毛玻璃卡片(暖白基调) |
-| 预设 `.darkCard()` | — | 深色毛玻璃卡片(近黑基调) |
+| `tintOpacity` | `0.15` | 色调不透明度(与色调自身 alpha 相乘后写进 `rgba()`)。默认对齐 H5 惯用的 `rgba(255,255,255,0.1~0.15)`:基色越透,背后内容的模糊感越明显;写大了会「盖住」、失去通透感 |
+| `saturationAmount` | `1.8` | 饱和度增强倍数(即 H5 惯用的 `saturate(180%)`),`nil` = 不写 `saturate()` |
+| `shineOpacity` | `0.35` | 对角高光强度(0 = 关闭,1 = 最强)。在一段 `linear-gradient(135deg, 白 → 近透明 → 极淡黑)` 于基色之上,制造「晶莹剔透」的上光感 |
+| `rimOpacity` | `0.35` | 边缘光强度(0 = 关闭,1 = 最强)。在块边缘画「顶部内高光 + 底部内微光 + 1px 发丝描边」,让毛玻璃边界清晰可辨(纯模糊没有边界,容易和宿主糊成一片) |
+| 预设 `.card()` | — | 高级毛玻璃卡:`blur 20 + saturate(180%) + 通透白基 + 对角高光 + 边缘光`,对齐 H5 常见组合 |
+| 预设 `.darkCard()` | — | 深色毛玻璃卡(近黑基调、压低高光,适合深色宿主 / 夜间模式) |
 
-> 毛玻璃依赖 `backdrop-filter`(WebKit 已支持),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响。
+> 毛玻璃依赖 `backdrop-filter`(WebKit 已支持,`-webkit-` 前缀兼容),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响;边缘光挂在 `html` 上(盒恒等于视口),不受 WebKit 内容偏移影响,恒对齐组件边缘。
 
 ## 高度与滚动(适配任意外层容器)
 
