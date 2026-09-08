@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(set -o pipefail)",
+      "Bash(xcodebuild -project SwiftUIHTMLLocalComponent.xcodeproj -scheme SwiftUIHTMLLocalComponent -destination 'generic/platform=iOS Simulator' -configuration Debug build)",
+      "Bash(xcodebuild -scheme HTMLRichText -destination 'generic/platform=iOS Simulator' build)",
+      "Bash(xcrun simctl *)",
+      "Bash(SIMCTL_CHILD_HRT_SCROLL=7 xcrun simctl launch --terminate-running-process 473FA34C-7398-4916-A8BC-9D09A01C0839 liu.SwiftUIHTMLLocalComponent)",
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)",
+      "Bash(SIMCTL_CHILD_HRT_SCROLL=7 xcrun simctl launch --terminate-running-process --console-pty 473FA34C-7398-4916-A8BC-9D09A01C0839 liu.SwiftUIHTMLLocalComponent)",
+      "Bash(echo \"launched bg pid $!\")"
+    ]
+  }
+}

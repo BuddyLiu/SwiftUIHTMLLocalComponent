@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>本地 HTML 示例文章</title>
+</head>
+<body>
+<h2>这是一篇本地 HTML 文件</h2>
+<p>
+通过 <code>HTMLRichText(localHTMLNamed:)</code> 读取 bundle 内的
+<code>sample-article.html</code> 后渲染,HTML 里的资源(如下面的图片)
+依然通过相对路径 <code>demo-banner.png</code> 解析,无需任何网络。
+</p>
+<img src="demo-banner.png" alt="本地图片">
+<p>
+支持链接:<a href="https://example.com/local-file">点击这个链接</a> 会被回调拦截,
+不会真的跳转。
+</p>
+<blockquote>本地 HTML 配合 WKWebView,即"加载本地网页形式的富文本"。</blockquote>
+</body>
+</html>

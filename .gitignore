@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+
+# Xcode — 用户工程配置
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+
+# Xcode — 构建产物
+build/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+.swiftpm/
+.build/
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Playgrounds
+*.timeline
+*.playground/DerivedData/
+
+# 临时 & 调试产物
+/tmp-*
+*.log
+console.log
+
+# VSCode / 编辑器
+.vscode/
+.idea/
+
+# 密钥 / 本地配置
+.env
+.env.*
+*.p12
+*.mobileprovision
