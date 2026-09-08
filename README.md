@@ -295,6 +295,15 @@ HTMLRichText(content: "自定义毛玻璃……", config: .init(
         blurRadius: 16, tintColor: .white, tintOpacity: 0.15
     ))
 ))
+
+// 渐变底色:tintColors(≥2 色)生成渐变,方向由 tintDirection 控制(这里中心放射)
+HTMLRichText(content: "渐变底色……", config: .init(
+    backgroundStyle: .frosted(HTMLRichTextFrostedStyle(
+        tintColors: [.cyan, .purple, .orange],
+        tintDirection: .radial,
+        tintOpacity: 0.16
+    ))
+))
 ```
 
 > 圆角由宿主负责:毛玻璃块本身不裁圆角(组件是整块 View 背景,不是独立卡片),需要圆角时在 SwiftUI 侧套 `.clipShape(RoundedRectangle(cornerRadius:))` 即可(演示里就是这么做的)。
@@ -304,8 +313,10 @@ HTMLRichText(content: "自定义毛玻璃……", config: .init(
 | 参数 | 默认值 | 说明 |
 |---|---|---|
 | `blurRadius` | `20` | 背景模糊半径(CSS px=pt,排版宽度按容器 pt 注入)。越大越糊;`0` = 只叠加色调不模糊 |
-| `tintColor` | `nil` | 叠加在模糊层上的色调;`nil` = 按深浅色自动取白/近黑,`.clear` = 不要色调只做纯模糊 |
-| `tintOpacity` | `0.15` | 色调不透明度(与色调自身 alpha 相乘后写进 `rgba()`)。默认对齐 H5 惯用的 `rgba(255,255,255,0.1~0.15)`:基色越透,背后内容的模糊感越明显;写大了会「盖住」、失去通透感 |
+| `tintColor` | `nil` | 叠加在模糊层上的**单色**色调;`nil` = 按深浅色自动取白/近黑,`.clear` = 不要色调只做纯模糊。设置 `tintColors` 后本字段被忽略 |
+| `tintColors` | `nil` | 叠加在模糊层上的**渐变**色调(≥ 2 色才生成渐变,每个停靠色按 `tintOpacity` 统一半透明);`nil` = 退回 `tintColor`。如 `[.cyan, .purple, .orange]` 配 `tintDirection: .radial` |
+| `tintDirection` | `.topToBottom` | 渐变方向的走向,见下表「渐变方向」;仅 `tintColors` ≥ 2 色时参与渲染 |
+| `tintOpacity` | `0.15` | 色调不透明度(与色调自身 alpha 相乘后写进 `rgba()`;渐变时每个停靠色同规则)。默认对齐 H5 惯用的 `rgba(255,255,255,0.1~0.15)`:基色越透,背后内容的模糊感越明显;写大了会「盖住」、失去通透感 |
 | `saturationAmount` | `1.8` | 饱和度增强倍数(即 H5 惯用的 `saturate(180%)`),`nil` = 不写 `saturate()` |
 | `shineOpacity` | `0.35` | 对角高光强度(0 = 关闭,1 = 最强)。在一段 `linear-gradient(135deg, 白 → 近透明 → 极淡黑)` 于基色之上,制造「晶莹剔透」的上光感 |
 | `rimOpacity` | `0.35` | **上边缘光**强度(0 = 关闭,1 = 最强)。在毛玻璃块顶缘画一条内侧微高光(`inset 0 1px`,挂在 `html` 上),提升「贴边高光」的精致感。早期版本还在底缘画对称内微光 + 整周发丝描边,在彩色玻璃底部会映出一条颜色不一样的 1~2px 浅色线,已移除 —— 现在只有顶部 |
@@ -315,6 +326,47 @@ HTMLRichText(content: "自定义毛玻璃……", config: .init(
 | 预设 `.fallback()` | — | 轻量毛玻璃(glass-fallback 风格):`blur(5px) saturate(180%)` + 基色 0.2,模糊档位最低、性能开销小,内容保留更多细节 |
 | 预设 `.card()` | = `.gradient()` | 兼容别名 |
 | 预设 `.darkCard()` | = `.dark()` | 兼容别名 |
+
+#### 渐变方向(`HTMLRichTextGradientDirection`)
+
+`tintColors` ≥ 2 色时按 `tintDirection` 生成 `linear-gradient` / `radial-gradient`(方向按「由**起**到**讫**」理解):
+
+| 枚举值 | CSS 渐变 | 走向 |
+|---|---|---|
+| `.topToBottom`(默认) | `linear-gradient(to bottom, …)` | 上 → 下 |
+| `.bottomToTop` | `to top` | 下 → 上 |
+| `.leftToRight` | `to right` | 左 → 右 |
+| `.rightToLeft` | `to left` | 右 → 左 |
+| `.topLeadingToBottomTrailing` | `to bottom right` | 左上 → 右下 |
+| `.topTrailingToBottomLeading` | `to bottom left` | 右上 → 左下 |
+| `.bottomTrailingToTopLeading` | `to top left` | 右下 → 左上 |
+| `.bottomLeadingToTopTrailing` | `to top right` | 左下 → 右上 |
+| `.radial` | `radial-gradient(ellipse at center, …)` | 中心放射 |
+| `.angle(_ degrees: CGFloat)` | `linear-gradient(Ndeg, …)` | 任意角度,`0°` 向上、顺时针递增(`90°` → 右) |
+
+单色(默认或 `tintColor`)时没有渐变、本字段不参与渲染;多种方向叠加在 **对角高光**(固定 `135°`)之上,`background:` 多层天然并存。
+
+### 无文本毛玻璃视图(`HTMLRichTextFrostedView`)
+
+SwiftUI 原生 `.ultraThinMaterial` / `.regularMaterial` 等**只有固定档位、模糊程度不可调**;`HTMLRichTextFrostedView` 把上面这套 `backdrop-filter` 毛玻璃链路封装成**没有文本的纯玻璃视图**,所有参数(`blurRadius` / `saturationAmount` / `tintColor`·`tintColors`+`tintDirection` / `tintOpacity` / `shineOpacity` / `rimOpacity`)都可调:
+
+```swift
+ZStack {
+    colorfulBackground                          // 宿主:毛玻璃模糊采样的就是它
+    HTMLRichTextFrostedView(
+        style: .init(tintColors: [.blue, .purple], tintDirection: .topToBottom, blurRadius: 30),
+        colorScheme: .light                     // 可选:强制深浅色基调,nil 跟随系统
+    )
+    .clipShape(RoundedRectangle(cornerRadius: 16))  // 圆角由宿主负责
+}
+.frame(height: 200)                             // 高度需宿主给定(玻璃强制铺满传入 frame)
+```
+
+要点:
+- 入口 `HTMLRichTextFrostedView(style: HTMLRichTextFrostedStyle = .light(), colorScheme: ColorScheme? = nil)`;
+- **高度必须由宿主给定**(`.frame(height:)`)—— 组件没有文本、不走内容高度自适应(空内容测高恒 ≈1pt,内容自适应会把 WebView 塌成 1pt),它强制铺满外部给的 frame;
+- 圆角用宿主 `.clipShape(...)`,毛玻璃块本身不做圆角(与 `HTMLRichText` 同一哲学);
+- 与 `HTMLRichText` 一样依赖 `backdrop-filter` 能力,WebView 背后需要真实宿主内容才有效果。
 
 > 毛玻璃依赖 `backdrop-filter`(WebKit 已支持,`-webkit-` 前缀兼容),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响(高度测量含 `contentPadding`);上边缘光挂在 `html` 上(盒恒等于视口),不受 WebKit 内容偏移影响,恒对齐组件顶缘。文字与玻璃边缘之间的内边距用 `contentPadding` 配置(默认 0):玻璃/纯色背景一直铺满整块,只有文字相对内缩。完全不支持 `backdrop-filter` 的引擎自动降级为半透明白基色(与 `.fallback()` 预设的「低档模糊」是两码事 —— 那是引擎级最后兜底),内容依然可读。
 
@@ -463,7 +515,8 @@ HTMLRichText(
 8. 配套工具类(`HTMLRichTextTools`:预估高度 / HEX 取色 / 行内 CSS);
 9. 图片交互与样式细化(内联 / 块级卡片 / 左浮动图文混排、点击禁用、长按回调、边框 / 背景 / 外边距预设);
 10. 预估高度收身 / 高度缓存;
-11. 背景样式(毛玻璃 `.frosted` 四种预设 `.light()` / `.dark()` / `.gradient()` / `.fallback()` 叠加彩色 / 深色宿主、纯色 `.solid`)。
+11. 背景样式(毛玻璃 `.frosted` 四种预设 `.light()` / `.dark()` / `.gradient()` / `.fallback()` 叠加彩色 / 深色宿主、纯色 `.solid`、渐变色调 `tintColors` + `tintDirection` 中心放射);
+12. 无文本毛玻璃视图(`HTMLRichTextFrostedView` 浅 / 深 / 渐变色调 / 大半径模糊多档)。
 
 构建:
 

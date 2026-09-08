@@ -152,12 +152,61 @@ enum HTMLRichTextTemplate {
         return css
     }
 
-    /// 毛玻璃基色:`rgba(色调, tintOpacity × 色调自身alpha)`。
-    /// `tintColor` 为 nil 时按深浅色自动取白 / 近黑,nil 表示「跟随系统」。
+    /// 毛玻璃基色层。单色(默认 / `tintColor`)输出 `rgba(色调, tintOpacity × 色调自身alpha)`;
+    /// `tintColors` ≥ 2 色时生成 `linear-gradient` / `radial-gradient`(每色同一规则)。
+    /// 优先顺序 `tintColors` → `tintColor` → 按深浅色自动取白 / 近黑。
     /// 半透明基色是毛玻璃的前提 —— 完全不透会盖死背后的宿主内容。
     private static func frostedTintCSS(_ style: HTMLRichTextFrostedStyle, isDark: Bool) -> String {
-        let tint = style.tintColor ?? (isDark ? Color(red: 0.06, green: 0.06, blue: 0.08) : .white)
-        return HTMLRichTextTools.cssColor(tint, opacity: style.tintOpacity, isDark: isDark)
+        tintLayerCSS(
+            colors: style.effectiveTintColors(isDark: isDark),
+            direction: style.tintDirection,
+            opacity: style.tintOpacity,
+            isDark: isDark
+        )
+    }
+
+    /// 把停靠色数组编译成一条 `background` 层。**1 色**保持单 `rgba(…)`
+    /// (向后兼容,输出逐字不变);**≥ 2 色**生成渐变 —— 线性方向走 `linear-gradient(<方向>, …)`,
+    /// `.radial` 走 `radial-gradient(ellipse at center, …)`。每个停靠色都按
+    /// `opacity × 颜色自身 alpha` 统一半透明。
+    private static func tintLayerCSS(
+        colors: [Color],
+        direction: HTMLRichTextGradientDirection,
+        opacity: CGFloat,
+        isDark: Bool
+    ) -> String {
+        guard colors.count >= 2 else {
+            let single = colors.first ?? .white
+            return HTMLRichTextTools.cssColor(single, opacity: opacity, isDark: isDark)
+        }
+        let stops = colors
+            .map { HTMLRichTextTools.cssColor($0, opacity: opacity, isDark: isDark) }
+            .joined(separator: ", ")
+        switch direction {
+        case .radial:
+            return "radial-gradient(ellipse at center, \(stops))"
+        case .angle(let degrees):
+            return "linear-gradient(\(cssNumber(degrees))deg, \(stops))"
+        default:
+            return "linear-gradient(\(gradientDirectionCSS(direction) ?? "to bottom"), \(stops))"
+        }
+    }
+
+    /// 渐变方向枚举 → CSS 渐变关键词(`to bottom` / `to bottom right` / `Ndeg`)。
+    /// `.radial` 不涉及线性方向,返回 nil(调用方走 radial-gradient 分支)。
+    private static func gradientDirectionCSS(_ direction: HTMLRichTextGradientDirection) -> String? {
+        switch direction {
+        case .topToBottom:                return "to bottom"
+        case .bottomToTop:                return "to top"
+        case .leftToRight:                return "to right"
+        case .rightToLeft:                return "to left"
+        case .topLeadingToBottomTrailing: return "to bottom right"
+        case .topTrailingToBottomLeading: return "to bottom left"
+        case .bottomTrailingToTopLeading: return "to top left"
+        case .bottomLeadingToTopTrailing: return "to top right"
+        case .radial:                     return nil
+        case .angle(let degrees):         return "\(cssNumber(degrees))deg"
+        }
     }
 
     /// 毛玻璃的多层 `background` 值:`[对角高光渐变] , 基色`。
@@ -191,12 +240,17 @@ enum HTMLRichTextTemplate {
     }
 
     /// 引擎级降级:完全不支持 `backdrop-filter` 的引擎(罕见)把整页背景换成
-    /// 半透明白基色(取色调 @0.2),没有模糊但内容依然可读,不会「黑底白字」硬着陆。
+    /// 色调基色(每色 @0.2),没有模糊但内容依然可读,不会「黑底白字」硬着陆。
+    /// 多色渐变时保留同方向渐变,视觉尽量贴近有模糊的效果。
     /// 注意与轻量预设 `.fallback()`(`blur(5px)`)区分 —— 这里是真正没有滤镜能力时的
     /// 兜底,用 `@supports not` 包住,支持模糊的引擎完全不受影响。
     private static func frostedFallbackCSS(_ style: HTMLRichTextFrostedStyle, isDark: Bool) -> String {
-        let tint = style.tintColor ?? (isDark ? Color(red: 0.06, green: 0.06, blue: 0.08) : .white)
-        let solid = HTMLRichTextTools.cssColor(tint, opacity: 0.2, isDark: isDark)
+        let solid = tintLayerCSS(
+            colors: style.effectiveTintColors(isDark: isDark),
+            direction: style.tintDirection,
+            opacity: 0.2,
+            isDark: isDark
+        )
         return "\n        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {\n            html, body { background: \(solid); }\n        }"
     }
 

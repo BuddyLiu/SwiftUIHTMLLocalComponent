@@ -182,9 +182,11 @@ struct HTMLRichTextView: UIViewRepresentable {
         case .solid(let color):
             return "solid-\(HTMLRichTextTools.cssColor(color, isDark: isDark))"
         case .frosted(let f):
-            let tint = f.tintColor.map { HTMLRichTextTools.cssColor($0, opacity: f.tintOpacity, isDark: isDark) } ?? "auto"
+            let tints = f.effectiveTintColors(isDark: isDark)
+                .map { HTMLRichTextTools.cssColor($0, opacity: f.tintOpacity, isDark: isDark) }
+                .joined(separator: ",")
             let sat = f.saturationAmount.map(String.init(describing:)) ?? "nil"
-            return "frosted-\(f.blurRadius)-\(f.tintOpacity)-\(sat)-\(tint)-sh\(f.shineOpacity)-rim\(f.rimOpacity)"
+            return "frosted-\(f.blurRadius)-\(f.tintOpacity)-\(sat)-dir\(String(describing: f.tintDirection))-\(tints)-sh\(f.shineOpacity)-rim\(f.rimOpacity)"
         }
     }
 

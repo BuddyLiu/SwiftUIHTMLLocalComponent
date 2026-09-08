@@ -277,6 +277,34 @@ struct ContentView: View {
                             .frame(height: 150)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
 
+                            Text("· 渐变色调(`tintColors` + `tintDirection`):多色底色按方向生成渐变,默认单色路径输出不变")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.indigo, .blue, .cyan],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.orange).frame(width: 60, height: 60).offset(x: 24, y: 16)
+                                Circle().fill(.pink).frame(width: 44, height: 44).offset(x: 210, y: 80)
+                                Circle().fill(.yellow).frame(width: 52, height: 52).offset(x: 120, y: 30)
+                                HTMLRichText(
+                                    content: "渐变色调(radial):tintColors = [青, 紫, 橙] 中心放射,彩色宿主上底色自带过渡。"
+                                )
+                                .baseStyle(.init(
+                                    contentPadding: 12,
+                                    backgroundStyle: .frosted(.init(
+                                        tintColors: [.cyan, .purple, .orange],
+                                        tintDirection: .radial,
+                                        tintOpacity: 0.16
+                                    ))
+                                ))
+                            }
+                            .frame(height: 150)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.top, 8)
+
                             ZStack(alignment: .topLeading) {
                                 // 深色宿主:暗黑界面上的毛玻璃
                                 LinearGradient(
@@ -307,6 +335,87 @@ struct ContentView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .id(11)
+
+                        SectionCard("1️⃣2️⃣ 无文本毛玻璃视图(HTMLRichTextFrostedView)") {
+                            Text("SwiftUI 原生 `.ultraThinMaterial` 等模糊不可调;`HTMLRichTextFrostedView` 复用 backdrop-filter 链路,模糊半径 / 饱和度 / 色调渐变 / 高光全可调。玻璃铺满宿主给的 frame,圆角由宿主 .clipShape 负责。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.pink, .orange, .yellow, .green],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.purple).frame(width: 70, height: 70).offset(x: 210, y: 8)
+                                Circle().fill(.blue).frame(width: 46, height: 46).offset(x: 30, y: 84)
+                                HTMLRichTextFrostedView(style: .light())
+                                    .overlay(alignment: .center) {
+                                        Text(".light():blur(20) saturate(1.8),白基盖在浅色宿主上")
+                                            .font(.caption2)
+                                            .foregroundStyle(.black.opacity(0.6))
+                                            .padding(10)
+                                    }
+                            }
+                            .frame(height: 130)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.black, .gray.opacity(0.7), .purple.opacity(0.9)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.pink).frame(width: 60, height: 60).offset(x: 210, y: 10)
+                                Circle().fill(.cyan).frame(width: 44, height: 44).offset(x: 40, y: 90)
+                                HTMLRichTextFrostedView(
+                                    style: .init(
+                                        tintColors: [.blue, .purple],
+                                        tintDirection: .topTrailingToBottomLeading,
+                                        tintOpacity: 0.18
+                                    )
+                                )
+                                .overlay(alignment: .center) {
+                                    Text("渐变色调 .topTrailingToBottomLeading(右上→左下) · 深色宿主")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white.opacity(0.85))
+                                        .padding(10)
+                                }
+                            }
+                            .frame(height: 130)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .padding(.top, 8)
+
+                            Text("· 大半径模糊:blur(45) 让背后细节几乎糊平,方向 / 饱和度可继续调")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.teal, .indigo, .pink],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                                Circle().fill(.yellow).frame(width: 64, height: 64).offset(x: 190, y: 16)
+                                Circle().fill(.white).frame(width: 36, height: 36).offset(x: 60, y: 76)
+                                HTMLRichTextFrostedView(
+                                    style: .init(
+                                        blurRadius: 45,
+                                        tintColors: [.cyan, .blue, .purple],
+                                        tintDirection: .topToBottom,
+                                        tintOpacity: 0.22,
+                                        saturationAmount: 1.4
+                                    )
+                                )
+                                .overlay(alignment: .center) {
+                                    Text("blur(45) + 上→下渐变,饱和 1.4")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white.opacity(0.85))
+                                        .padding(10)
+                                }
+                            }
+                            .frame(height: 140)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                            .padding(.top, 8)
+                        }
+                        .id(12)
                     }
                     .padding(16)
                 }
