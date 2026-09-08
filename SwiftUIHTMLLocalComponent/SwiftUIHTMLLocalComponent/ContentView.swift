@@ -252,6 +252,42 @@ struct ContentView: View {
                             .baseStyle(.init(fontSize: 15, baseURL: Self.resourceBaseURL()))
                         }
                         .id(10)
+
+                        SectionCard("1️⃣1️⃣ 背景样式:毛玻璃 / 纯色") {
+                            Text("· 毛玻璃(`backgroundStyle: .frosted`):WebView 保持透明,`backdrop-filter` 把背后的宿主内容模糊透出")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            ZStack(alignment: .topLeading) {
+                                // 彩色宿主:毛玻璃透过它演示模糊与色调(硬边色块让模糊一目了然)
+                                LinearGradient(
+                                    colors: [.orange, .pink, .purple, .indigo],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.yellow).frame(width: 56, height: 56).offset(x: 232, y: 14)
+                                Circle().fill(.blue).frame(width: 40, height: 40).offset(x: 34, y: 86)
+                                Circle().fill(.green).frame(width: 64, height: 64).offset(x: 178, y: 92)
+                                HTMLRichText(
+                                    content: "毛玻璃段落:背景把渐变模糊透出来,文字保持清晰。可调 blurRadius / tintColor / tintOpacity / saturationAmount,也可用 .card() / .darkCard() 预设。"
+                                )
+                                // 背景样式走 .baseStyle(config) 注入(纯文本入口的 config 由链式样式整体替换)
+                                .baseStyle(.init(backgroundStyle: .frosted(.init(blurRadius: 16, tintColor: .white, tintOpacity: 0.4, saturationAmount: 1.6))))
+                                .padding(12)
+                            }
+                            .frame(height: 150)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                            Text("· 纯色(`backgroundStyle: .solid`):铺一块颜色,透明度会写进 CSS")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            HTMLRichText(
+                                content: "纯色背景段落:backgroundStyle = .solid(teal 25%),半透明也能生效。"
+                            )
+                            .baseStyle(.init(backgroundStyle: .solid(.teal.opacity(0.25))))
+                            .padding(12)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .id(11)
                     }
                     .padding(16)
                 }

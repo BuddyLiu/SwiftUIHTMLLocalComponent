@@ -171,6 +171,14 @@ public enum HTMLRichTextTools {
         return String(format: "rgba(%d,%d,%d,%.2f)", Int(c.r * 255), Int(c.g * 255), Int(c.b * 255), min(1, c.a))
     }
 
+    /// 把 Color 按**额外不透明度**解析成 `rgba(r,g,b,a)`(颜色自身 alpha × 透明度参数)。
+    /// 用于「毛玻璃色调叠加」这类把颜色和透明度分开配置的场景。
+    public static func cssColor(_ color: Color, opacity: CGFloat, isDark: Bool = false) -> String {
+        let c = cssComponents(color, isDark: isDark)
+        let alpha = min(1, max(0, c.a * opacity))
+        return String(format: "rgba(%d,%d,%d,%.2f)", Int(c.r * 255), Int(c.g * 255), Int(c.b * 255), alpha)
+    }
+
     /// 解析 Color(含动态系统色)按目标深浅色得到 RGBA 分量(0...1)。
     private static func cssComponents(_ color: Color, isDark: Bool) -> (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) {
         let traits = UITraitCollection(userInterfaceStyle: isDark ? .dark : .light)

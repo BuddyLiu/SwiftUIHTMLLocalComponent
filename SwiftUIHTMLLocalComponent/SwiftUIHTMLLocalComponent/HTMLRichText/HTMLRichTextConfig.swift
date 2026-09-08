@@ -51,7 +51,20 @@ public struct HTMLRichTextConfig {
     public var imageStyle: HTMLRichTextImageStyle = .default
 
     /// 是否透明背景无缝隙嵌入 SwiftUI,默认 true。
+    /// 仅当未设置 `backgroundStyle` 时生效(新 API 优先)。
     public var isTransparent: Bool = true
+
+    /// 背景样式(透明 / 纯色 / 毛玻璃),默认 nil。
+    /// 设置后**优先于** `isTransparent` + `backgroundColor`(那对字段保留兼容);
+    /// nil 时沿用旧行为:透明(false 时铺 `backgroundColor`)。毛玻璃与纯色详见
+    /// `HTMLRichTextBackgroundStyle`,毛玻璃参数见 `HTMLRichTextFrostedStyle`。
+    public var backgroundStyle: HTMLRichTextBackgroundStyle? = nil
+
+    /// 解析最终生效的背景样式:显式 `backgroundStyle` 优先,否则兼容旧 `isTransparent` / `backgroundColor`。
+    internal var effectiveBackgroundStyle: HTMLRichTextBackgroundStyle {
+        if let style = backgroundStyle { return style }
+        return isTransparent ? .transparent : .solid(backgroundColor)
+    }
 
     // MARK: - 加载体验
 
@@ -103,6 +116,7 @@ public struct HTMLRichTextConfig {
         customCSS: String? = nil,
         imageStyle: HTMLRichTextImageStyle = .default,
         isTransparent: Bool = true,
+        backgroundStyle: HTMLRichTextBackgroundStyle? = nil,
         isZoomEnabled: Bool = false,
         isTextSelectionEnabled: Bool = false,
         isLinkPreviewEnabled: Bool = false,
@@ -123,6 +137,7 @@ public struct HTMLRichTextConfig {
         self.customCSS = customCSS
         self.imageStyle = imageStyle
         self.isTransparent = isTransparent
+        self.backgroundStyle = backgroundStyle
         self.isZoomEnabled = isZoomEnabled
         self.isTextSelectionEnabled = isTextSelectionEnabled
         self.isLinkPreviewEnabled = isLinkPreviewEnabled

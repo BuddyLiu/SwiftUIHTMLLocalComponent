@@ -102,19 +102,21 @@ struct HTMLRichTextView: UIViewRepresentable {
 
     private func configureAppearance(_ webView: WKWebView) {
         webView.isOpaque = false
-        // 背景:透明模式用宿主背景无缝融合;非透明模式在加载阶段直接铺上配置的背景色,
+        // 背景:透明 / 毛玻璃都要求 WebView 全透明(毛玻璃的 backdrop-filter 正是模糊
+        // 这层透出来的宿主内容);非透明的纯色模式在加载阶段直接铺上配置的背景色,
         // 避免「先白底/先透明、CSS 生效后才变色」的加载闪烁。
-        if config.isTransparent {
+        switch config.effectiveBackgroundStyle {
+        case .transparent, .frosted:
             webView.backgroundColor = .clear
             if #available(iOS 15.0, *) {
                 webView.underPageBackgroundColor = .clear
             }
-        } else {
+        case .solid(let color):
             let traits = UITraitCollection(userInterfaceStyle: colorScheme == .dark ? .dark : .light)
-            let background = UIColor(config.backgroundColor).resolvedColor(with: traits)
-            webView.backgroundColor = background
+            let resolved = UIColor(color).resolvedColor(with: traits)
+            webView.backgroundColor = resolved
             if #available(iOS 15.0, *) {
-                webView.underPageBackgroundColor = background
+                webView.underPageBackgroundColor = resolved
             }
         }
         webView.scrollView.backgroundColor = webView.backgroundColor ?? .clear
@@ -159,7 +161,7 @@ struct HTMLRichTextView: UIViewRepresentable {
             html,
             "font:\(config.fontSize)-\(config.lineHeight)-\(config.letterSpacing.map(String.init(describing:)) ?? "nil")",
             "color:\(HTMLRichTextTemplate.hexString(config.textColor, isDark: isDark))-\(HTMLRichTextTemplate.hexString(config.linkColor, isDark: isDark))-\(HTMLRichTextTemplate.hexString(config.backgroundColor, isDark: isDark))",
-            "bg:\(config.isTransparent)",
+            "bg:\(backgroundKey(config.effectiveBackgroundStyle, isDark: isDark))",
             "family:\(config.fontFamily ?? "")",
             "align:\(config.textAlignment)",
             "css:\(config.customCSS ?? "")",
@@ -169,6 +171,20 @@ struct HTMLRichTextView: UIViewRepresentable {
             "inlineImg:\(config.inlineLocalImages)",
             "scheme:\(isDark ? "dark" : "light")"
         ].joined(separator: "|")
+    }
+
+    /// 背景样式的字符串指纹(任意字段变化都触发重载)。
+    private static func backgroundKey(_ style: HTMLRichTextBackgroundStyle, isDark: Bool) -> String {
+        switch style {
+        case .transparent:
+            return "transparent"
+        case .solid(let color):
+            return "solid-\(HTMLRichTextTools.cssColor(color, isDark: isDark))"
+        case .frosted(let f):
+            let tint = f.tintColor.map { HTMLRichTextTools.cssColor($0, opacity: f.tintOpacity, isDark: isDark) } ?? "auto"
+            let sat = f.saturationAmount.map(String.init(describing:)) ?? "nil"
+            return "frosted-\(f.blurRadius)-\(f.tintOpacity)-\(sat)-\(tint)"
+        }
     }
 
     /// imageStyle 的字符串指纹(任意字段变化都触发重载,含交互开关 / 排布 / 装饰)。

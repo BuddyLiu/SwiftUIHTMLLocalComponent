@@ -69,9 +69,19 @@ enum HTMLRichTextTemplate {
         @unknown default: align = "left"
         }
 
-        let background: String = config.isTransparent
-            ? "transparent"
-            : hexString(config.backgroundColor, isDark: isDark)
+        // 背景:透明 / 纯色 / 毛玻璃(backdrop-filter 模糊背后透出的宿主内容)。
+        let background: String
+        var backdrop = ""
+        switch config.effectiveBackgroundStyle {
+        case .transparent:
+            background = "transparent"
+        case .solid(let color):
+            background = HTMLRichTextTools.cssColor(color, isDark: isDark)
+        case .frosted(let style):
+            background = frostedTintCSS(style, isDark: isDark)
+            let filter = backdropFilterCSS(style)
+            backdrop = "\n            -webkit-backdrop-filter: \(filter);\n            backdrop-filter: \(filter);"
+        }
 
         let selection: String = config.isTextSelectionEnabled ? "text" : "none"
         let calloutRule = config.isTouchCalloutEnabled
@@ -82,7 +92,7 @@ enum HTMLRichTextTemplate {
         html, body {
             margin: 0;
             padding: 0;
-            background: \(background);
+            background: \(background);\(backdrop)
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
         }
@@ -128,6 +138,27 @@ enum HTMLRichTextTemplate {
         // 图片拖拽(长按拽走 / iPadOS 拖到相册等)不属于组件的交互范畴,编辑入口统一禁用。
         css += "\n        img {\n            -webkit-user-drag: none;\n        }"
         return css
+    }
+
+    /// 毛玻璃色调:`rgba(色调, tintOpacity × 色调自身alpha)`。
+    /// `tintColor` 为 nil 时按深浅色自动取白 / 近黑,nil 表示「跟随系统」。
+    private static func frostedTintCSS(_ style: HTMLRichTextFrostedStyle, isDark: Bool) -> String {
+        let tint = style.tintColor ?? (isDark ? Color(red: 0.06, green: 0.06, blue: 0.08) : .white)
+        return HTMLRichTextTools.cssColor(tint, opacity: style.tintOpacity, isDark: isDark)
+    }
+
+    /// 毛玻璃滤镜片段:`blur(半径)[ saturate(倍数)]`。
+    private static func backdropFilterCSS(_ style: HTMLRichTextFrostedStyle) -> String {
+        var filter = "blur(\(cssNumber(style.blurRadius)))px"
+        if let saturation = style.saturationAmount {
+            filter += " saturate(\(cssNumber(saturation)))"
+        }
+        return filter
+    }
+
+    /// 把 CGFloat 转成不含多余小数位的 CSS 数值(20.0 → "20")。
+    private static func cssNumber(_ value: CGFloat) -> String {
+        value.rounded() == value ? String(Int(value)) : String(format: "%.2f", value)
     }
 
     /// 按全局 `imageStyle` 生成文档级 `img {}` 规则(单段 `.pic` 再用行内样式覆盖)。

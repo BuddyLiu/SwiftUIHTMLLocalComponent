@@ -247,13 +247,14 @@ HTMLRichText(content: "卡片图 说明文字…", config: .init(baseURL: .main.
 | `letterSpacing` | `CGFloat?` | `nil` | 字距,不设置则跟随系统 |
 | `textColor` | `Color` | `.label` | 文本色,随深浅色自动适配 |
 | `linkColor` | `Color` | `.blue` | 链接颜色 |
-| `backgroundColor` | `Color` | `.clear` | 页面背景色 |
+| `backgroundColor` | `Color` | `.clear` | 页面背景色(兼容字段:仅 `isTransparent == false` 且未设 `backgroundStyle` 时生效) |
 | `fontFamily` | `String?` | `nil` | 字体族,如 `"PingFang SC, serif"` |
 | `textAlignment` | `TextAlignment` | `.leading` | 对齐(映射 CSS `text-align`) |
 | `customCSS` | `String?` | `nil` | 追加的自定义 CSS 规则 |
 | `imageStyle` | `HTMLRichTextImageStyle` | `.default` | 文档内图片的全局默认样式(`.imageItem` 可单段覆盖) |
 | `estimatedHeight` | `CGFloat?` | `nil` | 首帧预估高度:加载完成前先把布局撑起来,收到真实测量后自动替换 |
-| `isTransparent` | `Bool` | `true` | 页面背景透明,无缝嵌入宿主背景 |
+| `isTransparent` | `Bool` | `true` | 页面背景透明,无缝嵌入宿主背景(兼容字段,设 `backgroundStyle` 后优先) |
+| `backgroundStyle` | `HTMLRichTextBackgroundStyle?` | `nil` | 背景样式:透明 / 纯色 / **毛玻璃**,优先级高于 `isTransparent`(详见下文「背景样式」) |
 | `baseURL` | `URL?` | `Bundle.main.bundleURL` | 相对路径资源的解析根目录 |
 | `inlineLocalImages` | `Bool` | `true` | 是否把文档内指向本地文件的 `<img>` 内联成 `data:` URI(图片随文档一起返回,不走子资源请求,可规避 WebKit 偶发丢图;HTML 字节数约 ×1.33。仅 `baseURL` 下真实存在的本地文件内联,网络 / data: / blob: 不受影响) |
 | `preferredColorScheme` | `ColorScheme?` | `nil` | 强制浅/深色取色,默认跟随系统 |
@@ -262,7 +263,42 @@ HTMLRichText(content: "卡片图 说明文字…", config: .init(baseURL: .main.
 | `isLinkPreviewEnabled` | `Bool` | `false` | 允许长按链接预览(**默认关**) |
 | `isTouchCalloutEnabled` | `Bool` | `false` | 允许长按弹出复制菜单(**默认关**) |
 
-> 背景颜色由**外部**视图控制(`backgroundColor` 默认 `clear` + `isTransparent` 默认 `true`),HTML 内部不绘制背景,保证与宿主界面无缝融合。
+> 背景三选一(`transparent` / `solid` / `frosted`)见下文[「背景样式」](#背景样式透明--纯色--毛玻璃)。默认透明,HTML 内部不绘制背景,与宿主界面无缝融合。
+
+## 背景样式(透明 / 纯色 / 毛玻璃)
+
+背景由 `backgroundStyle` 枚举一体控制,优先级高于旧的 `isTransparent` + `backgroundColor`(那对字段保留兼容,未设置时行为不变):
+
+| 枚举值 | 效果 | 说明 |
+|---|---|---|
+| `.transparent` | 透明 | 组件默认:内容直接叠加在宿主背景上,谁放背后就透出谁 |
+| `.solid(Color)` | 纯色 | 铺一块颜色,透明度(`Color.opacity`)会写进 CSS 与 WebView 原生背景 |
+| `.frosted(HTMLRichTextFrostedStyle)` | **毛玻璃** | WebView 保持透明,文档内用 `backdrop-filter: blur(...) saturate(...)` 把背后的宿主内容模糊透出 |
+
+```swift
+// 毛玻璃:叠在彩色宿主视图上,背后内容被模糊 + 白色色调透出
+HTMLRichText(content: "毛玻璃段落……", config: .init(
+    backgroundStyle: .frosted(HTMLRichTextFrostedStyle(
+        blurRadius: 16, tintColor: .white, tintOpacity: 0.4, saturationAmount: 1.6
+    ))
+))
+
+// 亦可经链式入口:.baseStyle(.init(backgroundStyle: .frosted(.card())))
+HTMLRichText(content: "卡片毛玻璃预设……").baseStyle(.init(backgroundStyle: .frosted(.card())))
+```
+
+### 毛玻璃参数(`HTMLRichTextFrostedStyle`)
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `blurRadius` | `20` | 背景模糊半径(CSS px=pt,排版宽度按容器 pt 注入)。越大越糊;`0` = 只叠加色调不模糊 |
+| `tintColor` | `nil` | 叠加在模糊层上的色调;`nil` = 按深浅色自动取白/近黑,`.clear` = 不要色调只做纯模糊 |
+| `tintOpacity` | `0.4` | 色调不透明度(与色调自身 alpha 相乘后写进 `rgba()`) |
+| `saturationAmount` | `1.8` | 饱和度增强倍数,`nil` = 不写 `saturate()` |
+| 预设 `.card()` | — | 浅色毛玻璃卡片(暖白基调) |
+| 预设 `.darkCard()` | — | 深色毛玻璃卡片(近黑基调) |
+
+> 毛玻璃依赖 `backdrop-filter`(WebKit 已支持),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响。
 
 ## 高度与滚动(适配任意外层容器)
 
@@ -408,7 +444,8 @@ HTMLRichText(
 7. 纯文本 + 链式标记(`.baseStyle / .linkItem / .imageItem`,action + onTap 并存);
 8. 配套工具类(`HTMLRichTextTools`:预估高度 / HEX 取色 / 行内 CSS);
 9. 图片交互与样式细化(内联 / 块级卡片 / 左浮动图文混排、点击禁用、长按回调、边框 / 背景 / 外边距预设);
-10. 预估高度收身 / 高度缓存。
+10. 预估高度收身 / 高度缓存;
+11. 背景样式(毛玻璃 `.frosted` 叠加彩色宿主、纯色 `.solid`)。
 
 构建:
 
