@@ -22,6 +22,8 @@
 ```
 SwiftUIHTMLLocalComponent/
 ├── Package.swift                              # SPM 库定义(可选接入方式)
+├── HTMLRichText.podspec                        # CocoaPods 接入定义(可选接入方式)
+├── LICENSE                                     # MIT 许可
 ├── README.md
 └── SwiftUIHTMLLocalComponent/                 # Xcode 工程
     ├── SwiftUIHTMLLocalComponent.xcodeproj
@@ -230,11 +232,23 @@ HTMLRichText(content: "卡片图 说明文字…", config: .init(baseURL: .main.
 
 > 兼容性:`html:` / `localHTMLNamed:` / 声明式入口三套 API 可混用。
 
-## 接入方式(三选一)
+## 接入方式(四选一)
 
 1. **拷贝源码**:把 `HTMLRichText/` 文件夹拖进你的 Xcode 工程(iOS 15+,`import SwiftUI/WebKit` 即可,零依赖)。
-2. **SPM**:把本仓库作为 Swift Package 依赖引入(见 `Package.swift`),`import HTMLRichText`。
-3. **引入整个工程**:把 `SwiftUIHTMLLocalComponent.xcodeproj` 拖进你的 Workspace,关联 target 后使用。
+2. **SPM**:Xcode `File → Add Package Dependencies...` 粘贴仓库地址(或直接按 URL 添加),`import HTMLRichText`:
+
+   ```
+   https://github.com/BuddyLiu/SwiftUIHTMLLocalComponent.git
+   ```
+
+3. **CocoaPods**:Podfile 里按 Git 方式引入(未发布到 CDN 时的标准做法),`import HTMLRichText`:
+
+   ```ruby
+   pod 'HTMLRichText', :git => 'https://github.com/BuddyLiu/SwiftUIHTMLLocalComponent.git', :tag => '0.3.0'
+   ```
+
+   发布到 CocoaPods 后可简化为 `pod 'HTMLRichText'`(见仓库根 `HTMLRichText.podspec`,版本与 tag 对应)。
+4. **引入整个工程**:把 `SwiftUIHTMLLocalComponent.xcodeproj` 拖进你的 Workspace,关联 target 后使用。
 
 支持最低 iOS 15(需要 `UIColor(Color)` 动态取色与 SwiftUI `ColorScheme`)。
 
