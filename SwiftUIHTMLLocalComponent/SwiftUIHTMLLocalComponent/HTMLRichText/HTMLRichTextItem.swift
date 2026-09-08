@@ -77,38 +77,6 @@ public struct HTMLRichTextImageMargin {
     }
 }
 
-/// 图片阴影模型(照片级 API,当前**不参与渲染**)。
-/// 图片阴影功能已按需求暂时停用:首帧漏绘 / 视口裁切带来的问题较多,先不移除 API、
-/// 待后续恢复。`color/opacity/radius/offsetX/offsetY` 字段仍可读写,但渲染层不会再输出
-/// `filter: drop-shadow(...)`。
-public struct HTMLRichTextImageShadow {
-
-    /// 阴影颜色,默认黑色。
-    public var color: Color = .black
-    /// 阴影不透明度(0...1),默认 0.2。
-    public var opacity: Double = 0.2
-    /// 模糊半径(CSS px),默认 4。
-    public var radius: CGFloat = 4
-    /// 水平偏移(CSS px,右为正),默认 0。
-    public var offsetX: CGFloat = 0
-    /// 垂直偏移(CSS px,下为正),默认 2。
-    public var offsetY: CGFloat = 2
-
-    public init(
-        color: Color = .black,
-        opacity: Double = 0.2,
-        radius: CGFloat = 4,
-        offsetX: CGFloat = 0,
-        offsetY: CGFloat = 2
-    ) {
-        self.color = color
-        self.opacity = max(0, min(1, opacity))
-        self.radius = radius
-        self.offsetX = offsetX
-        self.offsetY = offsetY
-    }
-}
-
 /// 图片样式(**全部字段可选**,nil = 用引擎默认或继承全局 `HTMLRichTextConfig.imageStyle`)。
 /// 声明式入口可在 `.imageItem(style:)` 里覆盖个别字段,未覆盖的字段回落到全局配置。
 public struct HTMLRichTextImageStyle {
@@ -132,8 +100,6 @@ public struct HTMLRichTextImageStyle {
     public var margin: HTMLRichTextImageMargin?
     /// 背景颜色(透过透明图片可见);nil = 透明。
     public var backgroundColor: Color?
-    /// 阴影;nil = 无阴影。⚠️ 当前不参与渲染(功能已临时停用,见 `HTMLRichTextImageShadow`)。
-    public var shadow: HTMLRichTextImageShadow?
     /// 边框粗细(CSS px);nil / 0 = 无边框。
     public var borderWidth: CGFloat?
     /// 边框颜色;与 `borderWidth` 同时设置才显示边框。
@@ -153,7 +119,6 @@ public struct HTMLRichTextImageStyle {
         verticalAlignment: HTMLRichTextImageVerticalAlignment? = nil,
         margin: HTMLRichTextImageMargin? = nil,
         backgroundColor: Color? = nil,
-        shadow: HTMLRichTextImageShadow? = nil,
         borderWidth: CGFloat? = nil,
         borderColor: Color? = nil,
         isTapEnabled: Bool? = nil,
@@ -168,7 +133,6 @@ public struct HTMLRichTextImageStyle {
         self.verticalAlignment = verticalAlignment
         self.margin = margin
         self.backgroundColor = backgroundColor
-        self.shadow = shadow
         self.borderWidth = borderWidth
         self.borderColor = borderColor
         self.isTapEnabled = isTapEnabled
@@ -231,7 +195,7 @@ public struct HTMLRichTextImageStyle {
         HTMLRichTextImageStyle(layout: .rightFloat, margin: HTMLRichTextImageMargin(left: marginLeft))
     }
 
-    // MARK: - 边框 / 阴影预设
+    // MARK: - 边框预设
 
     /// 描边图:边框颜色 + 粗细,可叠加圆角。
     public static func bordered(
@@ -242,20 +206,13 @@ public struct HTMLRichTextImageStyle {
         HTMLRichTextImageStyle(cornerRadius: cornerRadius, borderWidth: width, borderColor: color)
     }
 
-    /// 阴影图(默认:黑色 0.2 / 半径 4 / 向下偏移 2)。⚠️ 阴影当前不参与渲染(功能临时停用)。
-    public static func shadowed(_ shadow: HTMLRichTextImageShadow = HTMLRichTextImageShadow()) -> HTMLRichTextImageStyle {
-        HTMLRichTextImageStyle(shadow: shadow)
-    }
-
     /// 卡片图:块级 + 白底 + 圆角 + 细边框 + 上下留白,常见商品/内容卡。
-    /// 注意:默认 shadow 字段当前不参与渲染(阴影功能临时停用)。
     public static func card(
         alignment: HorizontalAlignment? = nil,
         cornerRadius: CGFloat = 12,
         borderColor: Color = Color(uiColor: .separator),
         borderWidth: CGFloat = 1,
-        backgroundColor: Color = .white,
-        shadow: HTMLRichTextImageShadow = HTMLRichTextImageShadow(radius: 8, offsetY: 2)
+        backgroundColor: Color = .white
     ) -> HTMLRichTextImageStyle {
         HTMLRichTextImageStyle(
             cornerRadius: cornerRadius,
@@ -263,20 +220,12 @@ public struct HTMLRichTextImageStyle {
             layout: .block,
             margin: HTMLRichTextImageMargin(top: 6, bottom: 6),
             backgroundColor: backgroundColor,
-            shadow: shadow,
             borderWidth: borderWidth,
             borderColor: borderColor
         )
     }
 
     // MARK: - 组合式便捷方法
-
-    /// 叠加阴影(在现有样式基础上只改阴影字段)。⚠️ 阴影当前不参与渲染(功能临时停用)。
-    public func withShadow(_ shadow: HTMLRichTextImageShadow) -> HTMLRichTextImageStyle {
-        var copy = self
-        copy.shadow = shadow
-        return copy
-    }
 
     /// 叠加边框(只改边框字段)。
     public func withBorder(width: CGFloat, color: Color) -> HTMLRichTextImageStyle {
@@ -306,7 +255,6 @@ public struct HTMLRichTextImageStyle {
             verticalAlignment: override.verticalAlignment ?? verticalAlignment,
             margin: override.margin.map { $0.merged(with: margin) } ?? margin,
             backgroundColor: override.backgroundColor ?? backgroundColor,
-            shadow: override.shadow ?? shadow,
             borderWidth: override.borderWidth ?? borderWidth,
             borderColor: override.borderColor ?? borderColor,
             isTapEnabled: override.isTapEnabled ?? isTapEnabled,

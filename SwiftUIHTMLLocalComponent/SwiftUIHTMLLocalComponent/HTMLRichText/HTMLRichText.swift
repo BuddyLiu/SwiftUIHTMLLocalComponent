@@ -225,7 +225,7 @@ public struct HTMLRichText: View {
     /// - Parameter match: 正文中要命中的文本。
     /// - Parameter localSource: 本地图片资源名(相对 `config.baseURL` 解析)。
     /// - Parameter style: 单段图片样式,未覆盖的字段沿用全局 `config.imageStyle`;
-    ///   排布 / 外边距 / 背景 / 阴影 / 边框 / 点击长按开关都在这里配置。
+    ///   排布 / 外边距 / 背景 / 边框 / 点击长按开关都在这里配置。
     /// - Parameter onLongPress: 可选的长按回调;传了以后记得在 `style` 里开启 `isLongPressEnabled`。
     /// - Parameter action: 点击回调,接收匹配文本(放在最后便于直接尾随闭包)。
     public func imageItem(
@@ -289,12 +289,12 @@ public struct HTMLRichText: View {
             )
             // 宽度用"紧约束"(proxy 的实际宽度)而不是 maxWidth:.infinity:
             // WKWebView 会把滚动内容尺寸当作 intrinsicContentSize,一旦宽度可伸缩,
-            // 会陷入"文档宽度→布局宽度"的反馈循环,导致高度暴涨(可达 33M px)。
+            // 会陷入"文档宽度→布局宽度"的反馈循环,导致高度暴涨。
             .frame(width: proxy.size.width, height: displayHeight, alignment: .top)
-            // 注意:不要在 WebView 所在视图上做 SwiftUI 的 .opacity 动画 —— 那会扰动
-            // WKWebView 远程合成层,表现为「图片已画出(takeSnapshot 生效),但淡入动画
-            // 进行到一半又消失」。内容淡入已移到文档内部(CSS body.opacity:0 → JS 加
-            // .hrt-visible 渐变 0.3s),WebView 视图本身保持 opacity:1,不做透明度动画。
+            // 注意:不要对承载 WKWebView 的视图做 SwiftUI 的 .opacity 动画 —— 透明度的
+            // 插值帧会扰动 WebKit 远程合成层,导致内容(尤其 takeSnapshot 已经画出来的
+            // 图片)在渐变途中再次丢失。内容淡入已在文档内部完成(CSS body.opacity:0 →
+            // JS 加 .hrt-visible 触发 0.3s 渐变),本视图保持 opacity:1,不做透明度动画。
             .overlay {
                 // 可选加载占位:默认系统菊花(.loadingSpinner)或完全自定义(.loadingPlaceholder);
                 // 只在「超过延迟时长仍未就绪」时显示,加载快(默认 <1s)则不闪占位。

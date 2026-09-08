@@ -39,7 +39,7 @@ enum HTMLRichTextHeightCache {
         store[key] = widths
     }
 
-    /// 仅在演示 / 测试时使用:清空缓存。
+    /// 清空全部缓存(供 `HTMLRichTextTools.clearHeightCache()` 调用)。
     static func reset() {
         store.removeAll()
     }

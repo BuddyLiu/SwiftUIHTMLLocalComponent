@@ -32,9 +32,8 @@ struct HTMLRichTextView: UIViewRepresentable {
             configuration: makeConfiguration(context: context)
         )
         webView.navigationDelegate = context.coordinator
-        // 内部滚动完全由 config.isScrollEnabled 决定(默认关闭,内容交给外层滚动)。
-        // 不再做「内容高度超出容器就自动开滚动」的接管:该行为带来过多高度反馈
-        // 与测量问题,已移除;固定高度容器装不下时内容直接裁切。
+        // 内部滚动完全由 config.isScrollEnabled 决定(默认关闭,内容交给外层滚动);
+        // 固定高度容器装不下时内容直接裁切。
         configureAppearance(webView, scrollEnabled: config.isScrollEnabled)
         // 首次加载放到 updateUIView:此时 WebView 才能拿到真实容器宽度,
         // 用固定宽度排版,避免 `width=device-width` 在窄容器里引发高度膨胀。
@@ -87,21 +86,8 @@ struct HTMLRichTextView: UIViewRepresentable {
     private func makeConfiguration(context: Context) -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
         // 注入 JS 桥(在文档解析前注入,保证事件监听早于内容)
-        var scriptSource = HTMLRichTextTemplate.javaScript
-        #if DEBUG
-        // 图片加载兜底调试:**DEBUG 下默认开启**(不依赖环境变量)。
-        // 之前按 HRT_IMG_DBG 环境变量门控,直接点图标运行 / 真机调试时环境变量
-        // 传不进来,stats / retry 一行都不打,「加载失败」与「加载成功」日志看起来
-        // 毫无区别,无法区分漏绘与解码失败。现在默认开;设 HRT_IMG_DBG=0 可关闭。
-        if ProcessInfo.processInfo.environment["HRT_IMG_DBG"] != "0" {
-            scriptSource = scriptSource.replacingOccurrences(
-                of: "window.__htmlRichTextImgDebug = false;",
-                with: "window.__htmlRichTextImgDebug = true;"
-            )
-        }
-        #endif
         let script = WKUserScript(
-            source: scriptSource,
+            source: HTMLRichTextTemplate.javaScript,
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         )

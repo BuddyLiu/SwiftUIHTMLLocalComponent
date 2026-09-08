@@ -132,7 +132,7 @@ public enum HTMLRichTextTools {
         return HTMLRichTextHeightCache.height(for: key, width: Int(containerWidth))
     }
 
-    /// 清空进程内的高度缓存(通常无需调用;调试 / 内存压力需要重置时可清理)。
+    /// 清空进程内的高度缓存(正常使用无需调用;需要强制重新测量内容高度时可用)。
     public static func clearHeightCache() {
         HTMLRichTextHeightCache.reset()
     }
@@ -162,7 +162,7 @@ public enum HTMLRichTextTools {
     }
 
     /// 把 Color 解析成可直接写进 CSS 的颜色值:`#RRGGBB`(不透明时)或 `rgba(r,g,b,a)`(带透明度时)。
-    /// 适合用作阴影 / 边框 / 背景等需要透明度的行内样式。
+    /// 适合用作边框 / 背景等需要透明度的行内样式。
     public static func cssColor(_ color: Color, isDark: Bool = false) -> String {
         let c = cssComponents(color, isDark: isDark)
         if c.a >= 0.999 {
@@ -222,9 +222,6 @@ public enum HTMLRichTextTools {
     /// 覆盖尺寸 / 圆角 / 适配、内联垂直对齐、外边距(内联时即与相邻文字的间距)、
     /// 背景色、边框等图片样式字段。
     /// 编辑原始 HTML 时可直接拼进 `<img style="…">` 获得一致的呈现。
-    ///
-    /// - Note: 阴影字段(`shadow`)当前**不参与渲染** —— 图片阴影功能已按需求暂时移除
-    ///   (首帧漏绘 / 裁切问题过多),API 保留以便后续恢复。
     public static func inlineCSS(for imageStyle: HTMLRichTextImageStyle, isDark: Bool = false) -> String {
         var mt: CGFloat = 0, mr: CGFloat = 0, mb: CGFloat = 0, ml: CGFloat = 0
         if let margin = imageStyle.margin {

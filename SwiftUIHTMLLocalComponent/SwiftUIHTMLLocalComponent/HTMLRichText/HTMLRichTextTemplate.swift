@@ -25,8 +25,8 @@ enum HTMLRichTextTemplate {
     ///   造成高度反馈放大(高度随帧高线性膨胀),所以必须用真实容器宽度。
     static func document(content: String, config: HTMLRichTextConfig, isDark: Bool, containerWidth: Int = 0) -> String {
         let viewportWidth = containerWidth > 0 ? "width=\(containerWidth)" : "width=device-width"
-        // 注意:不要给固定宽度追加 `initial-scale=1` —— iOS 上该组合会把排版宽度
-        // 强制拉回设备宽度(窄容器会横向溢出、高度反馈放大),实测 innerWidth 会变 402。
+        // 注意:不要给固定宽度追加 `initial-scale=1` —— 该组合会把排版宽度拉回设备宽度
+        //(窄容器会横向溢出、高度反馈放大),请保持 only width。
         let viewport: String
         if containerWidth > 0 {
             viewport = config.isZoomEnabled
@@ -100,9 +100,9 @@ enum HTMLRichTextTemplate {
         if let letterSpacing = config.letterSpacing {
             css += "\n            letter-spacing: \(letterSpacing)px;"
         }
-        // 内容淡入在 WebView 内部完成(CSS + JS),SwiftUI 侧不再对含 WKWebView 的视图做
-        // 透明度动画:给 WKWebView 的 layer 加 .opacity 动画会扰动远程合成层,表现为
-        //「takeSnapshot 已把图片画出来,但淡入动画进行到一半图片又消失」。
+        // 内容淡入在 WebView 内部完成(CSS + JS),SwiftUI 侧不对含 WKWebView 的视图做
+        // 透明度动画:给 WKWebView 的 layer 加 .opacity 动画会扰动远程合成层,导致已经
+        // 画出来的内容(经 takeSnapshot 修好的图片)在渐变途中丢失。
         // body 初始 opacity:0 → JS 加 .hrt-visible 后经 CSS 过渡淡入;opacity 不影响布局与测高。
         css += """
         opacity: 0;
@@ -147,10 +147,10 @@ enum HTMLRichTextTemplate {
     /// 1. 尺寸上报 —— 内容高度/宽度变化时回传,驱动 SwiftUI 侧自适应高度;
     /// 2. 点击拦截 —— 命中 `<a>` 或带 `data-tap` 的元素时回传,且阻止 `<a>` 自身跳转。
     ///
-    /// viewport 同步说明:`width=device-width` 会按照**设备全屏宽度**(如 402pt)排版,
-    /// 而本组件的 WebView 通常比屏幕窄(卡片内),两者不一致会导致横向溢出与
-    /// 高度反馈放大,因此由 Swift 侧把 WebView 真实宽度写进 `window.__htmlRichTextWidth`,
-    /// 这里据此把 viewport 宽度改为容器宽度,保证按真实宽度排版再测高。
+    /// viewport 同步说明:`width=device-width` 会按照**设备全屏宽度**排版,而组件的
+    /// WebView 通常比屏幕窄(卡片内),两者不一致会导致横向溢出与高度反馈放大,
+    /// 因此由 Swift 侧把 WebView 真实宽度写进 `window.__htmlRichTextWidth`,这里据此
+    /// 把 viewport 宽度改为容器宽度,保证按真实宽度排版后再测高。
     static let javaScript: String = """
     (function () {
       var NS = "\(bridgeName)";
@@ -163,8 +163,6 @@ enum HTMLRichTextTemplate {
       }
       // 由 Swift 侧在 WebView 完成布局后写入容器宽度(单位 pt / CSS px)。
       window.__htmlRichTextWidth = 0;
-      // 图片加载兜底调试开关(Swift 侧检测到 HRT_IMG_DBG 环境变量时替换为 true)。
-      window.__htmlRichTextImgDebug = false;
 
       // 把 viewport 的宽度改成容器宽度,使排版宽度 = 真实显示宽度。
       // 只改动 width 一项,保留 maximum-scale / user-scalable 等既有配置。
@@ -297,16 +295,12 @@ enum HTMLRichTextTemplate {
         setTimeout(showBody, 500);
       });
 
-      // WebKit 首帧合成漏绘:「后到达的图片」解码完成(naturalWidth>0)但合成器把它
-      // 所在 tile 按「无图」提交了,滚动 / 重排后才补。已用 `HRT_IMG stats decoded=total`
-      // 确认;setNeedsDisplay / transform(JS 侧 / CSS transform)只动 GPU 合成层,不触发
-      // WebContent 进程的 tile 重栅格化 —— 这是此前所有 nudge 收效甚微的原因。
-      // 真正的重栅格化触发点只有两个:滚动、或请求一帧完整渲染(takeSnapshot)。
-      // 组件内部滚动被禁用(内容交给外层),所以这里只做「通知 Swift 侧去
-      // takeSnapshot 强制整页重新光栅化」的轻量 nudge(见 Coordinator):
-      // 它在整页 load / 每张图片 load / +600ms / +1.5s 触发(300ms 防抖),且
-      // **不改变任何 DOM / 布局 / 样式**,因此不会产生可见闪断或跳动。
-      //(曾用 display:none / 克隆换位强制重绘,均会造成肉眼可见的跳动,已废弃。)
+      // WebKit 合成器偶发漏绘:图片已解码(naturalWidth>0)但所在 tile 按「无图」提交,
+      // 滚动或请求一帧完整渲染才会触发 WebContent 进程重栅格化。setNeedsDisplay /
+      // transform 只动 UI 进程的 GPU 合成层,够不到远程合成器,所以这里在每张图
+      // load / 整页 load 后向 Swift 侧发一次轻量通知(imgpaint),由 Coordinator 调
+      // takeSnapshot 强制整页重新光栅化。不发「重绘指令」以外的任何消息、不改变
+      // DOM / 布局 / 样式,因此不会产生可见闪断或跳动。
       var lastNudge = 0;
       function nudgePaint() {
         var n = Date.now();
@@ -321,25 +315,11 @@ enum HTMLRichTextTemplate {
         setTimeout(function () { nudgePaint(); }, 600);
         setTimeout(function () { nudgePaint(); reportSize(); }, 1500);
       });
-      // 每张图片解码完成立即 nud —— 专门覆盖「一段文字里插一张图」的单图漏绘
+      // 每张图片解码完成立即 nud,专门覆盖「正文文字里插一张图」的单图场景
       document.addEventListener("load", function (e) {
         var t = e.target;
         if (t && t.tagName === "IMG") { nudgePaint(); }
       }, true);
-      // 调试:图片解码统计,用于区分「解码失败」与「解码了但没画上去」两种丢图
-      if (window.__htmlRichTextImgDebug) {
-        window.addEventListener("load", function () {
-          setTimeout(function () {
-            var imgs = document.getElementsByTagName("img");
-            var total = 0, decoded = 0;
-            for (var i = 0; i < imgs.length; i++) {
-              total++;
-              if (imgs[i].naturalWidth > 0) decoded++;
-            }
-            post({ type: "img", status: "stats", total: total, decoded: decoded, failed: total - decoded });
-          }, 1600);
-        });
-      }
 
       if (window.MutationObserver) {
         // mutation 往往成串到来(布局/图片加载),防抖合并成一次测量,避免 JS ↔ Swift 风暴
@@ -358,7 +338,7 @@ enum HTMLRichTextTemplate {
         });
       }
 
-      // —— 图片偶发加载失败兜底 ——
+      // —— 图片加载失败兜底 ——
       // WebKit 偶发不把图片画上去,失败形态有两种,都要捞:
       //  a) complete 但 naturalWidth==0(加载"结束"但没解出宽度,可能没触发 error);
       //  b) 长时间停在 loading(请求被吞掉:不 complete 也不 error)。
@@ -395,16 +375,10 @@ enum HTMLRichTextTemplate {
             if (parent && parent.replaceChild) {
               parent.replaceChild(img.cloneNode(true), img);
             }
-            if (window.__htmlRichTextImgDebug) {
-              post({ type: "img", status: "cloneretry", src: (src.length > 64 ? src.slice(0, 64) + "…" : src), attempt: s ? s.retries : 0, reason: reason });
-            }
             return;
           }
           var sep = src.indexOf("?") >= 0 ? "&" : "?";
           img.src = src + sep + "imgRetry=" + now;   // 换新 URL 强制重发
-          if (window.__htmlRichTextImgDebug) {
-            post({ type: "img", status: "retry", src: src, attempt: s ? s.retries : 0, reason: reason });
-          }
         }
         // error 事件(didFail / 解码失败)立即重试
         document.addEventListener("error", function (e) {

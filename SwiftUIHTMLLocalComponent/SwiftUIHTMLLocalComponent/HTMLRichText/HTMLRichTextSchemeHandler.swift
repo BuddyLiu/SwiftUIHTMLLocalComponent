@@ -23,8 +23,8 @@ final class HTMLRichTextSchemeHandler: NSObject, WKURLSchemeHandler {
     /// 本地资源根目录(由 HTMLRichTextView.load 更新)。
     var baseURL: URL = Bundle.main.bundleURL
     /// 是否把文档内指向本地文件的 `<img src>` 内联成 data: URI(默认开)。
-    /// 内联后图片不经过 WKURLSchemeHandler 子资源请求链路——WebKit 偶发取消 /
-    /// 漏响应子资源请求会丢图,内联直接绕开这条链路,图片必然出现在文档字节里。
+    /// 内联后图片随文档一起解码,不经过 WebKit 子资源请求链路(该链路偶发丢图),
+    /// 图片必然出现在文档字节里;代价是 HTML 体积约放大 1.33 倍。
     var inlineImagesEnabled: Bool = true
 
     // MARK: - WKURLSchemeHandler
@@ -35,23 +35,11 @@ final class HTMLRichTextSchemeHandler: NSObject, WKURLSchemeHandler {
             return
         }
 
-        #if DEBUG
-        // 图片内联验证 & 子资源请求追踪:DEBUG 下默认打印(设 HRT_IMG_DBG=0 可关闭)。
-        // 内联主防线生效时,非主文档的子资源请求应为 0 条 —— 若打印出图片路径即内联没命中。
-        if url.path != Self.indexPath, ProcessInfo.processInfo.environment["HRT_IMG_DBG"] != "0" {
-            print("HRT_SUB \(url.path)")
-        }
-        #endif
-
         if url.path == Self.indexPath {
             let document = inlineImagesEnabled ? inlineLocalImages(in: currentDocument, baseURL: baseURL) : currentDocument
-            #if DEBUG
-            if ProcessInfo.processInfo.environment["HRT_IMG_DBG"] != "0" {
-                let imgCount = document.components(separatedBy: "<img").count - 1
-                let dataCount = document.components(separatedBy: "data:image").count - 1
-                print("HRT_DOC inline=\(inlineImagesEnabled) imgs=\(imgCount) dataURI=\(dataCount) rawSrc=\(imgCount - dataCount)")
-            }
-            #endif
+            // 主文档必须以 `text/html` + 独立 `textEncodingName: "utf-8"` 返回:
+            // 若把字符集拼进 MIME(如 `text/html; charset=utf-8`),部分 iOS 版本的
+            // WebKit 会把整篇文档当作转义源码渲染为 `<pre>`,viewport 失效、高度失控。
             respond(urlSchemeTask, url: url,
                     data: Data(document.utf8),
                     mimeType: "text/html",

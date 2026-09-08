@@ -19,6 +19,75 @@ struct ContentView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
+                        SectionCard("1️⃣ 基础富文本") {
+                            HTMLRichText(html: Self.basicHTML)
+                        }
+                        .id(1)
+                        
+                        SectionCard("2️⃣ 图文混排(相对路径本地图片)") {
+                            HTMLRichText(
+                                html: Self.imageHTML,
+                                config: .init(baseURL: Self.resourceBaseURL())
+                            )
+                        }
+                        .id(2)
+                        
+                        SectionCard("3️⃣ 点击交互:链接 + data-tap 自定义元素") {
+                            HTMLRichText(html: Self.interactiveHTML, onTap:  { tap in
+                                lastTap = Self.describe(tap)
+                                print("点击回调: \(Self.describe(tap))")   // 便于演示日志观察
+                            })
+                        }
+                        .id(3)
+                        
+                        SectionCard("4️⃣ 样式定制:字号 / 行高 / 颜色 / 自定义CSS") {
+                            HTMLRichText(html: Self.styleHTML,
+                                         config: .init(fontSize: 15, lineHeight: 1.6, textColor: .orange))
+                            HTMLRichText(html: Self.styleHTML,
+                                         config: .init(fontSize: 18, lineHeight: 2.1, textColor: .indigo,
+                                                       linkColor: .pink, customCSS: "p strong{color:#E53935}"))
+                            HTMLRichText(html: Self.styleHTML,
+                                         config: .init(fontSize: 16, lineHeight: 1.8, letterSpacing: 1,
+                                                       fontFamily: "Georgia, serif", textAlignment: .center))
+                        }
+                        .id(4)
+                        
+                        SectionCard("5️⃣ WebView 开关:内部滚动 / 长按 / 缩放") {
+                            Text("· 允许内部滚动(高度固定 140,超出可滑动)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            HTMLRichText(html: Self.longParagraph,
+                                         config: .init(isScrollEnabled: true))
+                            .frame(height: 140)
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            
+                            Text("· 允许长按:可选中文本、弹出预览与复制菜单")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            HTMLRichText(html: Self.selectableHTML,
+                                         config: .init(isTextSelectionEnabled: true,
+                                                       isLinkPreviewEnabled: true,
+                                                       isTouchCalloutEnabled: true))
+                            
+                            Text("· 允许双指缩放")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            HTMLRichText(html: Self.zoomableHTML,
+                                         config: .init(isZoomEnabled: true))
+                        }
+                        .id(5)
+                        
+                        SectionCard("6️⃣ 加载本地 HTML 文件(localHTMLNamed:)") {
+                            HTMLRichText(localHTMLNamed: "sample-article", onTap: { tap in
+                                lastTap = Self.describe(tap)
+                                print("点击回调: \(Self.describe(tap))")   // 便于演示日志观察
+                            })
+                        }
+                        .id(6)
+                        
                         SectionCard("7️⃣ 纯文本 + 链式标记(linkItem / imageItem)") {
                             let text = "这是一段富文本，支持点击，不支持缩放。再说一次：这是一段富文本。\n能插入图片，控制图片的样式——同一段配置会替换所有出现支持点击和富文本。"
                             HTMLRichText(
@@ -91,20 +160,8 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .id(8)
-                        SectionCard("9️⃣ 图片交互与样式细化(layout / 边距 / 背景 / 阴影 / 边框 / 长按)") {
+                        SectionCard("9️⃣ 图片交互与样式细化(layout / 边距 / 背景 / 边框 / 长按)") {
                             let base = Self.resourceBaseURL()
-
-                            Text("· 图片阴影已临时停用:`withShadow(_:)` / `shadow:` 字段保留但不再渲染(避免首帧漏绘、裁切等连带问题)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            HTMLRichText(
-                                content: "红影图 注意右下角原本有一团红色阴影(阴影功能已停用)。",
-                                onTap: { lastTap = Self.describe($0) }
-                            )
-                            .baseStyle(.init(fontSize: 15, imageStyle: .init(maxWidth: 240, cornerRadius: 8), baseURL: base))
-                            .imageItem("红影图", localSource: "demo-banner.png",
-                                       style: .init(maxWidth: 240, cornerRadius: 8),
-                                       action: { _ in })
 
                             Text("· 内联:大小 + 左右间距 + 垂直对齐(`vertical:`)")
                                 .font(.caption)
@@ -119,7 +176,7 @@ struct ContentView: View {
                                        style: .inline(vertical: .middle, marginLeft: 4, marginRight: 6),
                                        action: { _ in })
 
-                            Text("· 块级居中 + 白底 / 边框 / 圆角(`.card`;阴影字段已停用,不影响其余)")
+                            Text("· 块级居中 + 白底 / 边框 / 圆角(`.card`)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             HTMLRichText(
@@ -175,7 +232,7 @@ struct ContentView: View {
                                            print("点击图片 -> \(match)")
                                        })
 
-                            Text("· 快捷预设组合:`.bordered(.purple, width: 3, cornerRadius: 6)`(阴影功能已临时移除,不再叠加)")
+                            Text("· 快捷预设组合:`.bordered(.purple, width: 3, cornerRadius: 6)`")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             HTMLRichText(
@@ -189,10 +246,10 @@ struct ContentView: View {
                         .id(9)
 
                         SectionCard("🔟 固定高度容器(超出裁切)/ 预估高度收身") {
-                            Text("外层容器高度不足以展示全部内容时,内容**直接裁切**(自动内部滚动已移除);需要内部滚动请显式 `isScrollEnabled: true`。下方固定 140pt、内容更长,可对照观察裁切效果。")
+                            Text("外层容器高度不足以展示全部内容时,内容**直接裁切**;需要内部滚动请显式 `isScrollEnabled: true`。下方固定 140pt、内容更长,可对照观察裁切效果。")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            let longText = "这个容器被固定成 140pt 高,但这段文字比较长,内容高度超过了容器。组件不再自动打开内部滚动——超出 140pt 的部分会被裁掉;默认(容器不限高)时组件高度 = 内容高度,由外层 ScrollView 滚动。若要在这类固定高度里滑动查看,请给 config 设置 isScrollEnabled = true。再多写几行,让内容明显高于 140pt,方便观察裁切边界。"
+                            let longText = "这个容器被固定成 140pt 高,但这段文字比较长,内容高度超过了容器。组件不会自动打开内部滚动——超出 140pt 的部分会被裁掉;默认(容器不限高)时组件高度 = 内容高度,由外层 ScrollView 滚动。若要在这类固定高度里滑动查看,请给 config 设置 isScrollEnabled = true。再多写几行,让内容明显高于 140pt,方便观察裁切边界。"
                             HTMLRichText(
                                 content: longText,
                                 onTap: { lastTap = Self.describe($0) },
@@ -223,82 +280,11 @@ struct ContentView: View {
                             .baseStyle(.init(fontSize: 15, baseURL: Self.resourceBaseURL()))
                         }
                         .id(10)
-
-
-
-//                        SectionCard("1️⃣ 基础富文本") {
-//                            HTMLRichText(html: Self.basicHTML)
-//                        }
-//                        .id(1)
-//                        
-//                        SectionCard("2️⃣ 图文混排(相对路径本地图片)") {
-//                            HTMLRichText(
-//                                html: Self.imageHTML,
-//                                config: .init(baseURL: Self.resourceBaseURL())
-//                            )
-//                        }
-//                        .id(2)
-//                        
-//                        SectionCard("3️⃣ 点击交互:链接 + data-tap 自定义元素") {
-//                            HTMLRichText(html: Self.interactiveHTML) { tap in
-//                                lastTap = Self.describe(tap)
-//                                print("点击回调: \(Self.describe(tap))")   // 便于演示日志观察
-//                            }
-//                        }
-//                        .id(3)
-//                        
-//                        SectionCard("4️⃣ 样式定制:字号 / 行高 / 颜色 / 自定义CSS") {
-//                            HTMLRichText(html: Self.styleHTML,
-//                                         config: .init(fontSize: 15, lineHeight: 1.6, textColor: .orange))
-//                            HTMLRichText(html: Self.styleHTML,
-//                                         config: .init(fontSize: 18, lineHeight: 2.1, textColor: .indigo,
-//                                                       linkColor: .pink, customCSS: "p strong{color:#E53935}"))
-//                            HTMLRichText(html: Self.styleHTML,
-//                                         config: .init(fontSize: 16, lineHeight: 1.8, letterSpacing: 1,
-//                                                       fontFamily: "Georgia, serif", textAlignment: .center))
-//                        }
-//                        .id(4)
-//                        
-//                        SectionCard("5️⃣ WebView 开关:内部滚动 / 长按 / 缩放") {
-//                            Text("· 允许内部滚动(高度固定 140,超出可滑动)")
-//                                .font(.caption)
-//                                .foregroundStyle(.secondary)
-//                            HTMLRichText(html: Self.longParagraph,
-//                                         config: .init(isScrollEnabled: true))
-//                            .frame(height: 140)
-//                            .background(Color(.secondarySystemBackground))
-//                            .clipShape(RoundedRectangle(cornerRadius: 10))
-//                            
-//                            Text("· 允许长按:可选中文本、弹出预览与复制菜单")
-//                                .font(.caption)
-//                                .foregroundStyle(.secondary)
-//                                .padding(.top, 8)
-//                            HTMLRichText(html: Self.selectableHTML,
-//                                         config: .init(isTextSelectionEnabled: true,
-//                                                       isLinkPreviewEnabled: true,
-//                                                       isTouchCalloutEnabled: true))
-//                            
-//                            Text("· 允许双指缩放")
-//                                .font(.caption)
-//                                .foregroundStyle(.secondary)
-//                                .padding(.top, 8)
-//                            HTMLRichText(html: Self.zoomableHTML,
-//                                         config: .init(isZoomEnabled: true))
-//                        }
-//                        .id(5)
-//                        
-//                        SectionCard("6️⃣ 加载本地 HTML 文件(localHTMLNamed:)") {
-//                            HTMLRichText(localHTMLNamed: "sample-article") { tap in
-//                                lastTap = Self.describe(tap)
-//                                print("点击回调: \(Self.describe(tap))")   // 便于演示日志观察
-//                            }
-//                        }
-//                        .id(6)
                     }
                     .padding(16)
                 }
                 .task {
-                    // 演示辅助:启动时可通过 SIMCTL_CHILD_HRT_SCROLL=4 等快速定位到指定小节
+                    // 演示辅助:启动时可通过环境变量 HRT_SCROLL=4 快速定位到指定小节
                     if let raw = ProcessInfo.processInfo.environment["HRT_SCROLL"],
                        let index = Int(raw) {
                         try? await Task.sleep(nanoseconds: 600_000_000)

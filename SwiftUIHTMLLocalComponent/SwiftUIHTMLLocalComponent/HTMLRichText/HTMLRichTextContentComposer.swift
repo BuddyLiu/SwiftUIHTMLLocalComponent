@@ -72,7 +72,7 @@ enum HTMLRichTextContentComposer {
             if merged.isTapEnabled ?? true { interaction += " data-tap" }
             if merged.isLongPressEnabled ?? false { interaction += " data-long-press" }
 
-            // 图片行内样式(公共 CSS:尺寸/圆角/适配/边框/背景/阴影/外边距)+ 排布用的 display
+            // 图片行内样式(公共 CSS:尺寸/圆角/适配/边框/背景/外边距)+ 排布用的 display
             let baseCSS = HTMLRichTextTools.inlineCSS(for: merged, isDark: isDark)
             let imgCSS = cssAttribute(baseCSS.isEmpty ? "display: inline-block" : baseCSS + "; display: inline-block")
 
