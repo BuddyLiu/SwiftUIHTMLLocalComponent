@@ -254,7 +254,7 @@ struct ContentView: View {
                         .id(10)
 
                         SectionCard("1️⃣1️⃣ 背景样式:毛玻璃 / 纯色") {
-                            Text("· 毛玻璃(`backgroundStyle: .frosted`):WebView 保持透明,`backdrop-filter` 把背后的宿主内容模糊透出;三个预设 `.light()` / `.dark()` / `.gradient()` 覆盖浅色 / 深色 / 渐变三种常见需求")
+                            Text("· 毛玻璃(`backgroundStyle: .frosted`):WebView 保持透明,`backdrop-filter` 把背后的宿主内容模糊透出;预设 `.light()` / `.dark()` / `.gradient()` / `.fallback()` 覆盖浅色 / 深色 / 渐变 / 轻量四档")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             ZStack(alignment: .topLeading) {
@@ -272,7 +272,7 @@ struct ContentView: View {
                                 // 背景样式走 .baseStyle(config) 注入(纯文本入口的 config 由链式样式整体替换)。
                                 // 边缘光(inner highlight + 描边)挂在 html 上,恒对齐组件边缘 —— 固定高度容器
                                 // 也能看到发丝描边;圆角由宿主 .clipShape 负责(毛玻璃块本身不做圆角)。
-                                .baseStyle(.init(backgroundStyle: .frosted(.gradient())))
+                                .baseStyle(.init(backgroundStyle: .frosted(.dark())))
                                 .padding(12)
                             }
                             .frame(height: 150)

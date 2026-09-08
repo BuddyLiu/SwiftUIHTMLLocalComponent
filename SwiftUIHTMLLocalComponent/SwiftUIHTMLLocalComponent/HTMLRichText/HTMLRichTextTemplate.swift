@@ -190,9 +190,10 @@ enum HTMLRichTextTemplate {
         return "\n        html {\n            box-shadow: inset 0 1px 0 rgba(255,255,255,\(edge)),\n                        inset 0 -1px 0 rgba(255,255,255,\(bottom)),\n                        0 0 0 1px rgba(255,255,255,\(hairline));\n        }"
     }
 
-    /// 不支持 backdrop-filter 时的降级:整页换成半透明白(对应 H5 的 glass-fallback,
-    /// `rgba(,0.2)`)。没有模糊,但内容依然可读,不会变成「黑底白字」硬着陆。
-    /// 用 `@supports not` 包住:支持模糊的引擎完全不受影响。
+    /// 引擎级降级:完全不支持 `backdrop-filter` 的引擎(罕见)把整页背景换成
+    /// 半透明白基色(取色调 @0.2),没有模糊但内容依然可读,不会「黑底白字」硬着陆。
+    /// 注意与轻量预设 `.fallback()`(`blur(5px)`)区分 —— 这里是真正没有滤镜能力时的
+    /// 兜底,用 `@supports not` 包住,支持模糊的引擎完全不受影响。
     private static func frostedFallbackCSS(_ style: HTMLRichTextFrostedStyle, isDark: Bool) -> String {
         let tint = style.tintColor ?? (isDark ? Color(red: 0.06, green: 0.06, blue: 0.08) : .white)
         let solid = HTMLRichTextTools.cssColor(tint, opacity: 0.2, isDark: isDark)

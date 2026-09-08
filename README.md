@@ -311,10 +311,11 @@ HTMLRichText(content: "自定义毛玻璃……", config: .init(
 | 预设 `.light()` | — | 浅色毛玻璃(glass-card 风格):半透明白基 + `blur(20px) saturate(180%)` + 发丝描边,无高光渐变,最朴素常见 |
 | 预设 `.dark()` | — | 深色毛玻璃:近黑基调,适合深色宿主 / 夜间模式 |
 | 预设 `.gradient()` | — | 渐变高级毛玻璃(glass-premium 风格):通透白基 + 135° 对角高光 + `saturate(180%)` + 内高光,「晶莹剔透」的高配版 |
+| 预设 `.fallback()` | — | 轻量毛玻璃(glass-fallback 风格):`blur(5px) saturate(180%)` + 基色 0.2,模糊档位最低、性能开销小,内容保留更多细节 |
 | 预设 `.card()` | = `.gradient()` | 兼容别名 |
 | 预设 `.darkCard()` | = `.dark()` | 兼容别名 |
 
-> 毛玻璃依赖 `backdrop-filter`(WebKit 已支持,`-webkit-` 前缀兼容),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响;边缘光挂在 `html` 上(盒恒等于视口),不受 WebKit 内容偏移影响,恒对齐组件边缘。不支持 `backdrop-filter` 的引擎自动降级为半透明白基色(`glass-fallback` 做法),内容依然可读。
+> 毛玻璃依赖 `backdrop-filter`(WebKit 已支持,`-webkit-` 前缀兼容),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响;边缘光挂在 `html` 上(盒恒等于视口),不受 WebKit 内容偏移影响,恒对齐组件边缘。完全不支持 `backdrop-filter` 的引擎自动降级为半透明白基色(与 `.fallback()` 预设的「低档模糊」是两码事 —— 那是引擎级最后兜底),内容依然可读。
 
 ## 高度与滚动(适配任意外层容器)
 
@@ -461,7 +462,7 @@ HTMLRichText(
 8. 配套工具类(`HTMLRichTextTools`:预估高度 / HEX 取色 / 行内 CSS);
 9. 图片交互与样式细化(内联 / 块级卡片 / 左浮动图文混排、点击禁用、长按回调、边框 / 背景 / 外边距预设);
 10. 预估高度收身 / 高度缓存;
-11. 背景样式(毛玻璃 `.frosted` 三种预设 `.light()` / `.dark()` / `.gradient()` 叠加彩色 / 深色宿主、纯色 `.solid`)。
+11. 背景样式(毛玻璃 `.frosted` 四种预设 `.light()` / `.dark()` / `.gradient()` / `.fallback()` 叠加彩色 / 深色宿主、纯色 `.solid`)。
 
 构建:
 

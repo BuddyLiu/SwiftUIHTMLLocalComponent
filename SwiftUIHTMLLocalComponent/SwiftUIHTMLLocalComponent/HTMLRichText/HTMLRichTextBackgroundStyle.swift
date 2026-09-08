@@ -108,13 +108,14 @@ public struct HTMLRichTextFrostedStyle {
         self.rimOpacity = rimOpacity
     }
 
-    /// 常用预设。三个档位对应三种常见需求(模糊程度参照常见 H5 做法):
+    /// 常用预设。对应 H5 常见毛玻璃做法,按「模糊档位 + 基调色」分成:
     ///
     /// | 预设 | 风格 | 特点 |
     /// |---|---|---|
-    /// | `.light()` | 浅色毛玻璃 | 半透明白基 + `blur(20px) saturate(180%)` + 发丝描边,无高光渐变,最朴素常见 |
+    /// | `.light()` | 浅色毛玻璃 | `blur(20px) saturate(180%)` + 半透明白基 + 发丝描边,无高光,最朴素常见 |
     /// | `.dark()` | 深色毛玻璃 | 近黑基,适合深色宿主 / 夜间模式 |
     /// | `.gradient()` | 渐变高级毛玻璃 | 基色之上再叠 135° 对角高光 + 内高光,「晶莹剔透」的高配版 |
+    /// | `.fallback()` | 轻量毛玻璃 | `blur(5px) saturate(180%)` + 基色 0.2:档位最低、性能开销小,内容保留更多细节 |
     ///
     /// 旧预设 `.card()` = `.gradient()`、`.darkCard()` = `.dark()`(兼容别名)。
     ///
@@ -152,6 +153,20 @@ public struct HTMLRichTextFrostedStyle {
             saturationAmount: 1.8,
             shineOpacity: 0.4,
             rimOpacity: 0.6
+        )
+    }
+
+    /// 轻量毛玻璃(`glass-fallback` 风格):`blur(5px) saturate(180%)` +
+    /// 基色 `rgba(,0.2)`。模糊档位最低、近乎轻量方案:性能开销小、对背后
+    /// 内容保留更多可读细节,常用于内容较密的界面或作为高模糊的降级档。
+    public static func fallback() -> HTMLRichTextFrostedStyle {
+        HTMLRichTextFrostedStyle(
+            blurRadius: 5,
+            tintColor: .white,
+            tintOpacity: 0.2,
+            saturationAmount: 1.8,
+            shineOpacity: 0,
+            rimOpacity: 0.3
         )
     }
 
