@@ -164,6 +164,7 @@ struct HTMLRichTextView: UIViewRepresentable {
             "bg:\(backgroundKey(config.effectiveBackgroundStyle, isDark: isDark))",
             "family:\(config.fontFamily ?? "")",
             "align:\(config.textAlignment)",
+            "pad:\(config.contentPadding)",
             "css:\(config.customCSS ?? "")",
             "img:\(imageStyleKey(config.imageStyle, isDark: isDark))",
             "zoom:\(config.isZoomEnabled)-select:\(config.isTextSelectionEnabled)-callout:\(config.isTouchCalloutEnabled)",

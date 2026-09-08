@@ -251,6 +251,7 @@ HTMLRichText(content: "卡片图 说明文字…", config: .init(baseURL: .main.
 | `fontFamily` | `String?` | `nil` | 字体族,如 `"PingFang SC, serif"` |
 | `textAlignment` | `TextAlignment` | `.leading` | 对齐(映射 CSS `text-align`) |
 | `customCSS` | `String?` | `nil` | 追加的自定义 CSS 规则 |
+| `contentPadding` | `CGFloat` | `0` | 文字与内容边缘之间的内边距(pt,CSS `padding`,作用于 body)。背景(含毛玻璃)保持铺满整块,文字相对背景向内缩进,避免内容贴玻璃边 |
 | `imageStyle` | `HTMLRichTextImageStyle` | `.default` | 文档内图片的全局默认样式(`.imageItem` 可单段覆盖) |
 | `estimatedHeight` | `CGFloat?` | `nil` | 首帧预估高度:加载完成前先把布局撑起来,收到真实测量后自动替换 |
 | `isTransparent` | `Bool` | `true` | 页面背景透明,无缝嵌入宿主背景(兼容字段,设 `backgroundStyle` 后优先) |
@@ -288,7 +289,7 @@ HTMLRichText(content: "……", config: .init(backgroundStyle: .frosted(.dark())
 // 亦可经链式入口:.baseStyle(.init(backgroundStyle: .frosted(.card())))
 HTMLRichText(content: "卡片毛玻璃预设……").baseStyle(.init(backgroundStyle: .frosted(.card())))
 
-// 手动调参:通透明亮 + 强边缘光;不要高光把 shineOpacity 置 0,不要描边把 rimOpacity 置 0
+// 手动调参:通透明亮;不要高光把 shineOpacity 置 0,不要上边缘光把 rimOpacity 置 0
 HTMLRichText(content: "自定义毛玻璃……", config: .init(
     backgroundStyle: .frosted(HTMLRichTextFrostedStyle(
         blurRadius: 16, tintColor: .white, tintOpacity: 0.15
@@ -307,15 +308,15 @@ HTMLRichText(content: "自定义毛玻璃……", config: .init(
 | `tintOpacity` | `0.15` | 色调不透明度(与色调自身 alpha 相乘后写进 `rgba()`)。默认对齐 H5 惯用的 `rgba(255,255,255,0.1~0.15)`:基色越透,背后内容的模糊感越明显;写大了会「盖住」、失去通透感 |
 | `saturationAmount` | `1.8` | 饱和度增强倍数(即 H5 惯用的 `saturate(180%)`),`nil` = 不写 `saturate()` |
 | `shineOpacity` | `0.35` | 对角高光强度(0 = 关闭,1 = 最强)。在一段 `linear-gradient(135deg, 白 → 近透明 → 极淡黑)` 于基色之上,制造「晶莹剔透」的上光感 |
-| `rimOpacity` | `0.35` | 边缘光强度(0 = 关闭,1 = 最强)。在块边缘画「顶部内高光 + 底部内微光 + 发丝描边(取一半强度)」,让毛玻璃边界清晰可辨(纯模糊没有边界,容易和宿主糊成一片) |
-| 预设 `.light()` | — | 浅色毛玻璃(glass-card 风格):半透明白基 + `blur(20px) saturate(180%)` + 发丝描边,无高光渐变,最朴素常见 |
+| `rimOpacity` | `0.35` | **上边缘光**强度(0 = 关闭,1 = 最强)。在毛玻璃块顶缘画一条内侧微高光(`inset 0 1px`,挂在 `html` 上),提升「贴边高光」的精致感。早期版本还在底缘画对称内微光 + 整周发丝描边,在彩色玻璃底部会映出一条颜色不一样的 1~2px 浅色线,已移除 —— 现在只有顶部 |
+| 预设 `.light()` | — | 浅色毛玻璃(glass-card 风格):半透明白基 + `blur(20px) saturate(180%)` + 上边缘光,无高光渐变,最朴素常见 |
 | 预设 `.dark()` | — | 深色毛玻璃:近黑基调,适合深色宿主 / 夜间模式 |
 | 预设 `.gradient()` | — | 渐变高级毛玻璃(glass-premium 风格):通透白基 + 135° 对角高光 + `saturate(180%)` + 内高光,「晶莹剔透」的高配版 |
 | 预设 `.fallback()` | — | 轻量毛玻璃(glass-fallback 风格):`blur(5px) saturate(180%)` + 基色 0.2,模糊档位最低、性能开销小,内容保留更多细节 |
 | 预设 `.card()` | = `.gradient()` | 兼容别名 |
 | 预设 `.darkCard()` | = `.dark()` | 兼容别名 |
 
-> 毛玻璃依赖 `backdrop-filter`(WebKit 已支持,`-webkit-` 前缀兼容),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响;边缘光挂在 `html` 上(盒恒等于视口),不受 WebKit 内容偏移影响,恒对齐组件边缘。完全不支持 `backdrop-filter` 的引擎自动降级为半透明白基色(与 `.fallback()` 预设的「低档模糊」是两码事 —— 那是引擎级最后兜底),内容依然可读。
+> 毛玻璃依赖 `backdrop-filter`(WebKit 已支持,`-webkit-` 前缀兼容),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响(高度测量含 `contentPadding`);上边缘光挂在 `html` 上(盒恒等于视口),不受 WebKit 内容偏移影响,恒对齐组件顶缘。文字与玻璃边缘之间的内边距用 `contentPadding` 配置(默认 0):玻璃/纯色背景一直铺满整块,只有文字相对内缩。完全不支持 `backdrop-filter` 的引擎自动降级为半透明白基色(与 `.fallback()` 预设的「低档模糊」是两码事 —— 那是引擎级最后兜底),内容依然可读。
 
 ## 高度与滚动(适配任意外层容器)
 

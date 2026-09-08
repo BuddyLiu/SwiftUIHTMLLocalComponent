@@ -109,6 +109,7 @@ enum HTMLRichTextTemplate {
             line-height: \(config.lineHeight);
             color: \(textColor);
             text-align: \(align);
+            padding: \(cssNumber(config.contentPadding))px;
             word-break: break-word;
             overflow-wrap: anywhere;
             -webkit-user-select: \(selection);
@@ -136,7 +137,7 @@ enum HTMLRichTextTemplate {
             text-decoration: none;
         }
         """
-        // 毛玻璃边缘光(内高光 + 描边)单独追加在 html 规则上(见 frostedRimCSS)
+        // 毛玻璃上边缘光(顶部内高光)单独追加在 html 规则上(见 frostedRimCSS)
         css += frostedRim
         // 不支持 backdrop-filter 的引擎自动降级为半透明白(见 frostedFallbackCSS)
         css += frostedFallback
@@ -175,19 +176,18 @@ enum HTMLRichTextTemplate {
         return "\(gradient), \(tint)"
     }
 
-    /// 毛玻璃块的边缘光:顶部内高光 + 底部内微光 + 发丝描边(用 `0 0 0 1px`
-    /// 的 box-shadow 充当描边,不占布局、不挤压内容;描边取 rimOpacity 的一半,
-    /// 对应 H5 里 border `rgba(白, 0.3 左右)` 的强度)。
-    /// 挂在 `html` 上而非 `body`:html 的盒恒等于视口尺寸,WebKit 在布局往返中
-    /// 给 body 累积的顶部偏移(≈20px)不会把边缘光带偏,边缘光总能贴住组件边缘。
+    /// 毛玻璃块的上边缘光:仅保留**顶部内侧微高光**(`inset 0 1px`)。
+    /// 底部两侧的对称项(`inset 0 -1px`)与整周发丝描边(`0 0 0 1px`)此前会渲染成
+    /// 「毛玻璃底部一条颜色不一样的 1~2px 浅色线」:上边被文字 + 对角高光盖住看不见,
+    /// 侧边与卡片的近白底融为一体,唯独底部贴着彩色玻璃会显眼地映出一条线,故移除。
+    /// 挂 `html` 而非 `body`:html 的盒恒等于视口尺寸,WebKit 在布局往返中给 body
+    /// 累积的顶部偏移(≈20px)不会把边缘光带偏,边缘光总能贴住组件上缘。
     /// `rimOpacity = 0` 时返回空(不输出此规则)。
     private static func frostedRimCSS(_ style: HTMLRichTextFrostedStyle) -> String {
         let o = min(1, max(0, style.rimOpacity))
         guard o > 0 else { return "" }
         let edge = String(format: "%.2f", o)
-        let bottom = String(format: "%.2f", o * 0.4)
-        let hairline = String(format: "%.2f", o * 0.5)
-        return "\n        html {\n            box-shadow: inset 0 1px 0 rgba(255,255,255,\(edge)),\n                        inset 0 -1px 0 rgba(255,255,255,\(bottom)),\n                        0 0 0 1px rgba(255,255,255,\(hairline));\n        }"
+        return "\n        html {\n            box-shadow: inset 0 1px 0 rgba(255,255,255,\(edge));\n        }"
     }
 
     /// 引擎级降级:完全不支持 `backdrop-filter` 的引擎(罕见)把整页背景换成

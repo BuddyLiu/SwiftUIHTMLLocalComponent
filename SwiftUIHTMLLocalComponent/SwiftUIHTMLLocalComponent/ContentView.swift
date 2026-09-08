@@ -267,13 +267,12 @@ struct ContentView: View {
                                 Circle().fill(.blue).frame(width: 40, height: 40).offset(x: 34, y: 86)
                                 Circle().fill(.green).frame(width: 64, height: 64).offset(x: 178, y: 92)
                                 HTMLRichText(
-                                    content: "渐变毛玻璃(.gradient()):对角高光 + 高饱和,彩色宿主上最「透亮」。"
+                                    content: "渐变毛玻璃(.gradient()):对角高光 + 高饱和,彩色宿主上最「透亮」。文字边缘用 contentPadding: 12 内缩。"
                                 )
                                 // 背景样式走 .baseStyle(config) 注入(纯文本入口的 config 由链式样式整体替换)。
-                                // 边缘光(inner highlight + 描边)挂在 html 上,恒对齐组件边缘 —— 固定高度容器
-                                // 也能看到发丝描边;圆角由宿主 .clipShape 负责(毛玻璃块本身不做圆角)。
-                                .baseStyle(.init(backgroundStyle: .frosted(.gradient())))
-                                .padding(12)
+                                // 玻璃铺满整卡,文字与玻璃边缘之间的内边距由 contentPadding 配置(默认 0)。
+                                // 上边缘光挂在 html 上,恒对齐组件顶部;圆角由宿主 .clipShape 负责(毛玻璃块本身不做圆角)。
+                                .baseStyle(.init(contentPadding: 12, backgroundStyle: .frosted(.gradient())))
                             }
                             .frame(height: 150)
                             .clipShape(RoundedRectangle(cornerRadius: 12))

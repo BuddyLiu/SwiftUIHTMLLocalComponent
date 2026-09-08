@@ -47,6 +47,10 @@ public struct HTMLRichTextConfig {
     /// 追加注入的自定义 CSS 规则(可写任意 CSS,如 `.box { ... }`)。
     public var customCSS: String? = nil
 
+    /// 文字与内容边缘之间的内边距(CSS px,作用于 body),默认 0。
+    /// 毛玻璃 / 纯色背景保持铺满整块,文字相对背景向内缩进,避免内容贴边。
+    public var contentPadding: CGFloat = 0
+
     /// 文档内图片的全局默认样式(链式入口 `.imageItem(style:)` 可单段覆盖个别字段)。
     public var imageStyle: HTMLRichTextImageStyle = .default
 
@@ -114,6 +118,7 @@ public struct HTMLRichTextConfig {
         fontFamily: String? = nil,
         textAlignment: TextAlignment = .leading,
         customCSS: String? = nil,
+        contentPadding: CGFloat = 0,
         imageStyle: HTMLRichTextImageStyle = .default,
         isTransparent: Bool = true,
         backgroundStyle: HTMLRichTextBackgroundStyle? = nil,
@@ -135,6 +140,7 @@ public struct HTMLRichTextConfig {
         self.fontFamily = fontFamily
         self.textAlignment = textAlignment
         self.customCSS = customCSS
+        self.contentPadding = contentPadding
         self.imageStyle = imageStyle
         self.isTransparent = isTransparent
         self.backgroundStyle = backgroundStyle
