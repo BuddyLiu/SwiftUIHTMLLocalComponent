@@ -200,9 +200,14 @@ enum HTMLRichTextTemplate {
         return "\n        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {\n            html, body { background: \(solid); }\n        }"
     }
 
-    /// 毛玻璃滤镜片段:`blur(半径)[ saturate(倍数)]`。
+    /// 毛玻璃滤镜片段:`blur(半径px)[ saturate(倍数)]`。
+    ///
+    /// ⚠️ 单位必须写在 `blur()` 括号**内部**(`blur(20px)`):`blur()` 的参数是
+    /// `<length>`,写成 `blur(20)px` 是非法 CSS —— 整条 backdrop-filter 声明会被
+    /// 浏览器整段丢弃,毛玻璃退化成一团半透明纯色(背景全糊糊的「塑料感」,
+    /// 一点模糊都出不来)。`saturate()` 同理(倍数无单位,参数直接写数值)。
     private static func backdropFilterCSS(_ style: HTMLRichTextFrostedStyle) -> String {
-        var filter = "blur(\(cssNumber(style.blurRadius)))px"
+        var filter = "blur(\(cssNumber(style.blurRadius))px)"
         if let saturation = style.saturationAmount {
             filter += " saturate(\(cssNumber(saturation)))"
         }

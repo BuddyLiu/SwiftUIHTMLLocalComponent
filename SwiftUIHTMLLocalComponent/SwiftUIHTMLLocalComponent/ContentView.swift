@@ -272,7 +272,7 @@ struct ContentView: View {
                                 // 背景样式走 .baseStyle(config) 注入(纯文本入口的 config 由链式样式整体替换)。
                                 // 边缘光(inner highlight + 描边)挂在 html 上,恒对齐组件边缘 —— 固定高度容器
                                 // 也能看到发丝描边;圆角由宿主 .clipShape 负责(毛玻璃块本身不做圆角)。
-                                .baseStyle(.init(backgroundStyle: .frosted(.dark())))
+                                .baseStyle(.init(backgroundStyle: .frosted(.gradient())))
                                 .padding(12)
                             }
                             .frame(height: 150)
