@@ -76,6 +76,7 @@ enum HTMLRichTextTemplate {
         let background: String
         var backdrop = ""
         var frostedRim = ""
+        var frostedFallback = ""
         switch config.effectiveBackgroundStyle {
         case .transparent:
             background = "transparent"
@@ -86,6 +87,7 @@ enum HTMLRichTextTemplate {
             let filter = backdropFilterCSS(style)
             backdrop = "\n            -webkit-backdrop-filter: \(filter);\n            backdrop-filter: \(filter);"
             frostedRim = frostedRimCSS(style)
+            frostedFallback = frostedFallbackCSS(style, isDark: isDark)
         }
 
         let selection: String = config.isTextSelectionEnabled ? "text" : "none"
@@ -136,6 +138,8 @@ enum HTMLRichTextTemplate {
         """
         // 毛玻璃边缘光(内高光 + 描边)单独追加在 html 规则上(见 frostedRimCSS)
         css += frostedRim
+        // 不支持 backdrop-filter 的引擎自动降级为半透明白(见 frostedFallbackCSS)
+        css += frostedFallback
         // `-webkit-touch-callout` **不继承**:只对 `<a>` / `<img>` 元素本身生效,
         // 写在 body 上挡不住图片 —— 长按图片仍会弹系统「存储图像/拷贝/共享」菜单。
         // 关闭系统长按菜单时必须用通配符整份覆盖,链接与文档内所有图片才真正不可长按。
@@ -171,8 +175,9 @@ enum HTMLRichTextTemplate {
         return "\(gradient), \(tint)"
     }
 
-    /// 毛玻璃块的边缘光:顶部内高光 + 底部内微光 + 1px 发丝描边(用 `0 0 0 1px`
-    /// 的 box-shadow 充当描边,不占布局、不挤压内容)。
+    /// 毛玻璃块的边缘光:顶部内高光 + 底部内微光 + 发丝描边(用 `0 0 0 1px`
+    /// 的 box-shadow 充当描边,不占布局、不挤压内容;描边取 rimOpacity 的一半,
+    /// 对应 H5 里 border `rgba(白, 0.3 左右)` 的强度)。
     /// 挂在 `html` 上而非 `body`:html 的盒恒等于视口尺寸,WebKit 在布局往返中
     /// 给 body 累积的顶部偏移(≈20px)不会把边缘光带偏,边缘光总能贴住组件边缘。
     /// `rimOpacity = 0` 时返回空(不输出此规则)。
@@ -181,7 +186,17 @@ enum HTMLRichTextTemplate {
         guard o > 0 else { return "" }
         let edge = String(format: "%.2f", o)
         let bottom = String(format: "%.2f", o * 0.4)
-        return "\n        html {\n            box-shadow: inset 0 1px 0 rgba(255,255,255,\(edge)),\n                        inset 0 -1px 0 rgba(255,255,255,\(bottom)),\n                        0 0 0 1px rgba(255,255,255,\(o));\n        }"
+        let hairline = String(format: "%.2f", o * 0.5)
+        return "\n        html {\n            box-shadow: inset 0 1px 0 rgba(255,255,255,\(edge)),\n                        inset 0 -1px 0 rgba(255,255,255,\(bottom)),\n                        0 0 0 1px rgba(255,255,255,\(hairline));\n        }"
+    }
+
+    /// 不支持 backdrop-filter 时的降级:整页换成半透明白(对应 H5 的 glass-fallback,
+    /// `rgba(,0.2)`)。没有模糊,但内容依然可读,不会变成「黑底白字」硬着陆。
+    /// 用 `@supports not` 包住:支持模糊的引擎完全不受影响。
+    private static func frostedFallbackCSS(_ style: HTMLRichTextFrostedStyle, isDark: Bool) -> String {
+        let tint = style.tintColor ?? (isDark ? Color(red: 0.06, green: 0.06, blue: 0.08) : .white)
+        let solid = HTMLRichTextTools.cssColor(tint, opacity: 0.2, isDark: isDark)
+        return "\n        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {\n            html, body { background: \(solid); }\n        }"
     }
 
     /// 毛玻璃滤镜片段:`blur(半径)[ saturate(倍数)]`。

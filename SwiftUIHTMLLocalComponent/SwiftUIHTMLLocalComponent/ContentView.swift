@@ -254,7 +254,7 @@ struct ContentView: View {
                         .id(10)
 
                         SectionCard("1️⃣1️⃣ 背景样式:毛玻璃 / 纯色") {
-                            Text("· 毛玻璃(`backgroundStyle: .frosted`):WebView 保持透明,`backdrop-filter` 把背后的宿主内容模糊透出")
+                            Text("· 毛玻璃(`backgroundStyle: .frosted`):WebView 保持透明,`backdrop-filter` 把背后的宿主内容模糊透出;三个预设 `.light()` / `.dark()` / `.gradient()` 覆盖浅色 / 深色 / 渐变三种常见需求")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             ZStack(alignment: .topLeading) {
@@ -267,16 +267,34 @@ struct ContentView: View {
                                 Circle().fill(.blue).frame(width: 40, height: 40).offset(x: 34, y: 86)
                                 Circle().fill(.green).frame(width: 64, height: 64).offset(x: 178, y: 92)
                                 HTMLRichText(
-                                    content: "毛玻璃段落:背景把渐变模糊透出来,文字保持清晰。可调 blurRadius / tintColor / tintOpacity / saturationAmount / shineOpacity / rimOpacity,也可用 .card() / .darkCard() 预设。"
+                                    content: "渐变毛玻璃(.gradient()):对角高光 + 高饱和,彩色宿主上最「透亮」。"
                                 )
                                 // 背景样式走 .baseStyle(config) 注入(纯文本入口的 config 由链式样式整体替换)。
                                 // 边缘光(inner highlight + 描边)挂在 html 上,恒对齐组件边缘 —— 固定高度容器
                                 // 也能看到发丝描边;圆角由宿主 .clipShape 负责(毛玻璃块本身不做圆角)。
-                                .baseStyle(.init(backgroundStyle: .frosted(.card())))
+                                .baseStyle(.init(backgroundStyle: .frosted(.gradient())))
                                 .padding(12)
                             }
                             .frame(height: 150)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                            ZStack(alignment: .topLeading) {
+                                // 深色宿主:暗黑界面上的毛玻璃
+                                LinearGradient(
+                                    colors: [.black, .gray.opacity(0.6), .purple.opacity(0.8)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.indigo).frame(width: 70, height: 70).offset(x: 210, y: 12)
+                                Circle().fill(.pink).frame(width: 46, height: 46).offset(x: 40, y: 96)
+                                HTMLRichText(
+                                    content: "深色毛玻璃(.dark()):近黑基调,夜间模式 / 深色界面的常配。"
+                                )
+                                .baseStyle(.init(backgroundStyle: .frosted(.dark())))
+                                .padding(12)
+                            }
+                            .frame(height: 150)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.top, 8)
 
                             Text("· 纯色(`backgroundStyle: .solid`):铺一块颜色,透明度会写进 CSS")
                                 .font(.caption)

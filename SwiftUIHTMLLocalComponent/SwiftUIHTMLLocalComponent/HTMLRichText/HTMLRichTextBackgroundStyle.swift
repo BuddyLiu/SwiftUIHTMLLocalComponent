@@ -108,28 +108,60 @@ public struct HTMLRichTextFrostedStyle {
         self.rimOpacity = rimOpacity
     }
 
-    /// 常用预设:高级毛玻璃卡(通透白基 + 对角高光 + 边缘光,适合浅色宿主)。
-    /// `blur 20 + saturate(180%) + 1px 描边` 即 H5 最常用的组合。
-    public static func card() -> HTMLRichTextFrostedStyle {
+    /// 常用预设。三个档位对应三种常见需求(模糊程度参照常见 H5 做法):
+    ///
+    /// | 预设 | 风格 | 特点 |
+    /// |---|---|---|
+    /// | `.light()` | 浅色毛玻璃 | 半透明白基 + `blur(20px) saturate(180%)` + 发丝描边,无高光渐变,最朴素常见 |
+    /// | `.dark()` | 深色毛玻璃 | 近黑基,适合深色宿主 / 夜间模式 |
+    /// | `.gradient()` | 渐变高级毛玻璃 | 基色之上再叠 135° 对角高光 + 内高光,「晶莹剔透」的高配版 |
+    ///
+    /// 旧预设 `.card()` = `.gradient()`、`.darkCard()` = `.dark()`(兼容别名)。
+    ///
+    /// 浅色毛玻璃(`glass-card` 风格):纯模糊 + 白基 + 描边,无高光渐变。
+    public static func light() -> HTMLRichTextFrostedStyle {
         HTMLRichTextFrostedStyle(
             blurRadius: 20,
             tintColor: .white,
             tintOpacity: 0.15,
             saturationAmount: 1.8,
-            shineOpacity: 0.35,
-            rimOpacity: 0.35
+            shineOpacity: 0,
+            rimOpacity: 0.3
         )
     }
 
-    /// 常用预设:深色毛玻璃卡(近黑基调、压低高光,适合深色宿主 / 夜间模式)。
-    public static func darkCard() -> HTMLRichTextFrostedStyle {
+    /// 深色毛玻璃(`glass-card` 深色版):近黑基调,适合深色宿主 / 夜间模式。
+    public static func dark() -> HTMLRichTextFrostedStyle {
         HTMLRichTextFrostedStyle(
             blurRadius: 20,
             tintColor: Color(red: 0.07, green: 0.07, blue: 0.09),
             tintOpacity: 0.25,
             saturationAmount: 1.2,
-            shineOpacity: 0.15,
-            rimOpacity: 0.2
+            shineOpacity: 0,
+            rimOpacity: 0.25
         )
+    }
+
+    /// 渐变高级毛玻璃(`glass-premium` 风格):通透白基 + 135° 对角高光 +
+    /// saturate(180%) + 内高光,「晶莹剔透」的高配版。
+    public static func gradient() -> HTMLRichTextFrostedStyle {
+        HTMLRichTextFrostedStyle(
+            blurRadius: 20,
+            tintColor: .white,
+            tintOpacity: 0.1,
+            saturationAmount: 1.8,
+            shineOpacity: 0.4,
+            rimOpacity: 0.6
+        )
+    }
+
+    /// 兼容别名:同 `.gradient()`。
+    public static func card() -> HTMLRichTextFrostedStyle {
+        gradient()
+    }
+
+    /// 兼容别名:同 `.dark()`。
+    public static func darkCard() -> HTMLRichTextFrostedStyle {
+        dark()
     }
 }
