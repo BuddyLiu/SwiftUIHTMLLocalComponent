@@ -105,6 +105,14 @@ public struct HTMLRichTextConfig {
     /// 强制按指定深浅色取色;nil 跟随系统。
     public var preferredColorScheme: ColorScheme? = nil
 
+    // MARK: - 内部
+
+    /// 是否需要注入 JS 桥(测高 / 点击 / 长按 / 图片自愈)与内容淡入。
+    /// 内部使用:无文本毛玻璃视图(`HTMLRichTextFrostedView`)不需要任何 JS 交互,
+    /// 置 false 走「无桥极简文档」,省掉 JS 解析执行、尺寸上报与淡入生命周期;
+    /// 常规 `HTMLRichText` 恒为 true,行为不变。
+    internal var isBridgeNeeded: Bool = true
+
     public init() {}
 
     /// 全参数构造函数,可只传关心的字段。

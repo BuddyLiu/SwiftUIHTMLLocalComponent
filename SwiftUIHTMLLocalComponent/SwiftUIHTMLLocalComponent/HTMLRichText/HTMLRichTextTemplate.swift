@@ -44,7 +44,7 @@ enum HTMLRichTextTemplate {
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="\(viewport)">
-        <style>\(makeCSS(config: config, isDark: isDark))</style>
+        <style>\(makeCSS(config: config, isDark: isDark, isFadeEnabled: config.isBridgeNeeded))</style>
         \(extraCSS)
         </head>
         <body>\(content)</body>
@@ -54,7 +54,7 @@ enum HTMLRichTextTemplate {
 
     // MARK: - CSS
 
-    private static func makeCSS(config: HTMLRichTextConfig, isDark: Bool) -> String {
+    private static func makeCSS(config: HTMLRichTextConfig, isDark: Bool, isFadeEnabled: Bool = true) -> String {
         let textColor = hexString(config.textColor, isDark: isDark)
         let linkColor = hexString(config.linkColor, isDark: isDark)
 
@@ -84,16 +84,23 @@ enum HTMLRichTextTemplate {
         case .solid(let color):
             background = HTMLRichTextTools.cssColor(color, isDark: isDark)
         case .frosted(let style):
-            background = frostedBackgroundCSS(style, isDark: isDark)
-            let filter = backdropFilterCSS(style)
-            backdrop = "\n            -webkit-backdrop-filter: \(filter);\n            backdrop-filter: \(filter);"
-            frostedRim = frostedRimCSS(style)
-            frostedFallback = frostedFallbackCSS(style, isDark: isDark)
-            // 空内容(无文本毛玻璃视图)时 html/body 盒会塌成 0 高,
-            // 背景色会向画布传播(色调仍可见)但 backdrop-filter 不会传播,
-            // 模糊区=0 → 只有一层纯色调、没有玻璃感。给 html 一个整视口高的盒,
-            // 毛玻璃滤镜才覆盖整块玻璃。测高走 body(不用 html),文本卡片高度不受影响。
-            frostedGlass = "\n        html {\n            min-height: 100vh;\n        }"
+            // systemEffect 非 nil:渲染直接用系统原生毛玻璃(UIVisualEffectView /
+            // SwiftUI Material,由组件在 WebView 背后铺原生层),文档本身必须完全透明,
+            // 不产生任何 CSS 毛玻璃参数 —— 否则原生玻璃会与文档的半透明基色互相叠色。
+            if style.systemEffect != nil {
+                background = "transparent"
+            } else {
+                background = frostedBackgroundCSS(style, isDark: isDark)
+                let filter = backdropFilterCSS(style)
+                backdrop = "\n            -webkit-backdrop-filter: \(filter);\n            backdrop-filter: \(filter);"
+                frostedRim = frostedRimCSS(style)
+                frostedFallback = frostedFallbackCSS(style, isDark: isDark)
+                // 空内容(无文本毛玻璃视图)时 html/body 盒会塌成 0 高,
+                // 背景色会向画布传播(色调仍可见)但 backdrop-filter 不会传播,
+                // 模糊区=0 → 只有一层纯色调、没有玻璃感。给 html 一个整视口高的盒,
+                // 毛玻璃滤镜才覆盖整块玻璃。测高走 body(不用 html),文本卡片高度不受影响。
+                frostedGlass = "\n        html {\n            min-height: 100vh;\n        }"
+            }
         }
 
         let selection: String = config.isTextSelectionEnabled ? "text" : "none"
@@ -128,12 +135,20 @@ enum HTMLRichTextTemplate {
         // 透明度动画:给 WKWebView 的 layer 加 .opacity 动画会扰动远程合成层,导致已经
         // 画出来的内容(经 takeSnapshot 修好的图片)在渐变途中丢失。
         // body 初始 opacity:0 → JS 加 .hrt-visible 后经 CSS 过渡淡入;opacity 不影响布局与测高。
-        css += """
-        opacity: 0;
-            -webkit-transition: opacity 0.3s ease;
-            transition: opacity 0.3s ease;
+        // 无桥极简文档(无文本毛玻璃)没有 JS 加类,body 必须保持可见(opacity:1),
+        // 否则整块玻璃永远透明 —— 由调用方以 isBridgeNeeded=false 走该分支。
+        if isFadeEnabled {
+            css += """
+            opacity: 0;
+                -webkit-transition: opacity 0.3s ease;
+                transition: opacity 0.3s ease;
+            }
+            body.hrt-visible { opacity: 1; }
+            """
+        } else {
+            css += "\n}"
         }
-        body.hrt-visible { opacity: 1; }
+        css += """
         h1, h2, h3, h4, h5, h6, p, li, dt, dd, blockquote {
             line-height: inherit;
         }
@@ -459,6 +474,7 @@ enum HTMLRichTextTemplate {
       // DOM / 布局 / 样式,因此不会产生可见闪断或跳动。
       var lastNudge = 0;
       function nudgePaint() {
+        if (!document.getElementsByTagName("img").length) return;   // 无图文档(纯文本/无文本毛玻璃)无需重光栅化
         var n = Date.now();
         if (n - lastNudge < 300) return;   // 多图并发只 nud 一次
         lastNudge = n;

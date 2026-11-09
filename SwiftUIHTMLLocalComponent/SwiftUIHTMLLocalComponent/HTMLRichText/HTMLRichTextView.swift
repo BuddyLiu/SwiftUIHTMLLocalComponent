@@ -73,6 +73,8 @@ struct HTMLRichTextView: UIViewRepresentable {
     /// 把容器宽度写入 `window.__htmlRichTextWidth` 并触发一次重新测量。
     /// 宽度未变化时跳过,避免在高度自适应过程中反复 evaluateJavaScript。
     private func pushContainerWidth(_ webView: WKWebView, context: Context) {
+        // 无桥文档没有 __htmlRichTextWidth / reportSize,宽度注入是无效调用,跳过。
+        guard config.isBridgeNeeded else { return }
         let width = Int(webView.bounds.width)
         guard width > 0, width != context.coordinator.lastPushedWidth else { return }
         context.coordinator.lastPushedWidth = width
@@ -85,14 +87,18 @@ struct HTMLRichTextView: UIViewRepresentable {
 
     private func makeConfiguration(context: Context) -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
-        // 注入 JS 桥(在文档解析前注入,保证事件监听早于内容)
-        let script = WKUserScript(
-            source: HTMLRichTextTemplate.javaScript,
-            injectionTime: .atDocumentStart,
-            forMainFrameOnly: true
-        )
-        configuration.userContentController.addUserScript(script)
-        configuration.userContentController.add(context.coordinator, name: HTMLRichTextTemplate.bridgeName)
+        // 注入 JS 桥(在文档解析前注入,保证事件监听早于内容)。
+        // 无桥极简文档(无文本毛玻璃,isBridgeNeeded == false)不注入:
+        // 玻璃不需要测高 / 点击 / 长按,省掉 JS 解析执行与消息往返。
+        if config.isBridgeNeeded {
+            let script = WKUserScript(
+                source: HTMLRichTextTemplate.javaScript,
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            )
+            configuration.userContentController.addUserScript(script)
+            configuration.userContentController.add(context.coordinator, name: HTMLRichTextTemplate.bridgeName)
+        }
         // 本地资源(HTML 文档 + 相对路径图片等)统一走 hrtlocal:// scheme,
         // 由 scheme handler 在 baseURL 沙箱内读取,不依赖临时文件或读文件权限。
         configuration.setURLSchemeHandler(context.coordinator.schemeHandler,
@@ -169,6 +175,7 @@ struct HTMLRichTextView: UIViewRepresentable {
             "img:\(imageStyleKey(config.imageStyle, isDark: isDark))",
             "zoom:\(config.isZoomEnabled)-select:\(config.isTextSelectionEnabled)-callout:\(config.isTouchCalloutEnabled)",
             "base:\(config.baseURL?.absoluteString ?? "")",
+            "bridge:\(config.isBridgeNeeded ? 1 : 0)",
             "inlineImg:\(config.inlineLocalImages)",
             "scheme:\(isDark ? "dark" : "light")"
         ].joined(separator: "|")
@@ -182,11 +189,25 @@ struct HTMLRichTextView: UIViewRepresentable {
         case .solid(let color):
             return "solid-\(HTMLRichTextTools.cssColor(color, isDark: isDark))"
         case .frosted(let f):
+            // systemEffect 非 nil:CSS 参数不参与渲染,指纹只由系统效果本身决定
+            if let sys = f.systemEffect {
+                return "frosted-system-\(systemEffectKey(sys))"
+            }
             let tints = f.effectiveTintColors(isDark: isDark)
                 .map { HTMLRichTextTools.cssColor($0, opacity: f.tintOpacity, isDark: isDark) }
                 .joined(separator: ",")
             let sat = f.saturationAmount.map(String.init(describing:)) ?? "nil"
             return "frosted-\(f.blurRadius)-\(f.tintOpacity)-\(sat)-dir\(String(describing: f.tintDirection))-\(tints)-sh\(f.shineOpacity)-rim\(f.rimOpacity)"
+        }
+    }
+
+    /// 系统原生毛玻璃效果的字符串指纹(任意档位/材质变化都触发重载)。
+    private static func systemEffectKey(_ effect: HTMLRichTextFrostedSystemEffect) -> String {
+        switch effect {
+        case .uiBlurEffect(let style):
+            return "uiBlurEffect-\(String(describing: style))"
+        case .material(let id):
+            return "material-\(id)"
         }
     }
 

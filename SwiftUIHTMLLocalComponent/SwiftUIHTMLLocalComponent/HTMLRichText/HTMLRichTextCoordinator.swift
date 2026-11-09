@@ -60,8 +60,9 @@ extension HTMLRichTextView {
                         didReportReady = true
                         parent.onStateChange(.ready(value))
                         // 就绪后再补几次重光栅化:覆盖「高度已就绪、但图片此时才解码完成」
-                        // 的合成器漏绘场景(见 `nudgePaint`)。
-                        if let webView = message.webView {
+                        // 的合成器漏绘场景(见 `nudgePaint`)。仅文档含 `<img>` 才需要
+                        // (无文本毛玻璃 / 纯文本没有图片,跳过,省掉整页重栅格化)。
+                        if parent.html.lowercased().contains("<img"), let webView = message.webView {
                             Self.nudgePaint(webView, at: 0.15)
                             Self.nudgePaint(webView, at: 0.5)
                             Self.nudgePaint(webView, at: 1.2)
@@ -76,6 +77,8 @@ extension HTMLRichTextView {
             case "imgpaint":
                 // 图片解码完成后的轻量「重光栅化」请求:JS 在每张图 load /
                 // 整页 load 后上报,修正合成器漏绘(见 `nudgePaint`)。
+                // 无图文档 JS 侧不发该消息,这里再兜一层,防止任何残留消息触发重栅格化。
+                guard parent.html.lowercased().contains("<img") else { break }
                 if let webView = message.webView {
                     DispatchQueue.main.async {
                         Self.nudgePaint(webView)
@@ -128,12 +131,14 @@ extension HTMLRichTextView {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             // 页面加载完,把 WebView 真实宽度同步给 JS 并按该宽度上报一次尺寸
-            //(例如系统字体加载完成后高度可能变化)。
-            let width = Int(webView.bounds.width)
-            if width > 0 {
-                webView.evaluateJavaScript(
-                    "window.__htmlRichTextWidth = \(width); window.__htmlRichTextReportSize && window.__htmlRichTextReportSize()"
-                ) { _, _ in }
+            //(例如系统字体加载完成后高度可能变化)。无桥文档没有该 JS 全局,跳过。
+            if parent.config.isBridgeNeeded {
+                let width = Int(webView.bounds.width)
+                if width > 0 {
+                    webView.evaluateJavaScript(
+                        "window.__htmlRichTextWidth = \(width); window.__htmlRichTextReportSize && window.__htmlRichTextReportSize()"
+                    ) { _, _ in }
+                }
             }
             parent.onStateChange(.rendered)
         }

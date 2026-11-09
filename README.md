@@ -40,7 +40,12 @@ SwiftUIHTMLLocalComponent/
         │   ├── HTMLRichTextSchemeHandler.swift# hrtlocal:// 本地资源加载器
         │   ├── HTMLRichTextTools.swift        # 配套公共工具类(预估高度、颜色/转义、行内 CSS 等)
         │   ├── HTMLRichTextHeightCache.swift  # 进程内高度缓存(内容指纹 + 容器宽度)
-        │   └── HTMLTapContext.swift           # 点击回调数据模型
+        │   ├── HTMLTapContext.swift           # 点击回调数据模型
+        │   └── FrostedGlass/                  # 毛玻璃 / 玻璃效果子系统
+        │       ├── HTMLRichTextBackgroundStyle.swift # 背景样式枚举 + 毛玻璃参数与全部预设(含 UIBlurEffect / Material 系统原生效果)
+        │       ├── HTMLRichTextFrostedView.swift     # 无文本毛玻璃视图(blur / 色调 / 饱和度等全可调)
+        │       ├── HTMLRichTextSystemEffectView.swift # 系统原生效果层(UIVisualEffectView / Material,systemEffect 渲染)
+        │       └── HTMLRichTextGlassView.swift       # 玻璃包装层:原生 Glass 可选 / 低版本自动退回毛玻璃
         ├── ContentView.swift                  # 演示页:10 个场景
         ├── Resources/                         # 演示资源(demo-banner.png / sample-article.html)
         └── SwiftUIHTMLLocalComponentApp.swift
@@ -294,11 +299,14 @@ HTMLRichText(content: "卡片图 说明文字…", config: .init(baseURL: .main.
 // 渐变高级毛玻璃:135° 对角高光 + saturate(180%) + 内高光(高配版)
 HTMLRichText(content: "……", config: .init(backgroundStyle: .frosted(.gradient())))
 
-// 浅色毛玻璃:通透白基 + blur(20px),最朴素常用
+// 浅色毛玻璃:通透白基 + blur(4px),最朴素常用
 HTMLRichText(content: "……", config: .init(backgroundStyle: .frosted(.light())))
 
 // 深色毛玻璃:近黑基调,适合深色宿主 / 夜间模式
 HTMLRichText(content: "……", config: .init(backgroundStyle: .frosted(.dark())))
+
+// 系统默认材质:对应 SwiftUI Material.regularMaterial / UIKit systemMaterial,自适应深浅色
+HTMLRichText(content: "……", config: .init(backgroundStyle: .frosted(.regularMaterial())))
 
 // 亦可经链式入口:.baseStyle(.init(backgroundStyle: .frosted(.card())))
 HTMLRichText(content: "卡片毛玻璃预设……").baseStyle(.init(backgroundStyle: .frosted(.card())))
@@ -334,12 +342,64 @@ HTMLRichText(content: "渐变底色……", config: .init(
 | `saturationAmount` | `1.8` | 饱和度增强倍数(即 H5 惯用的 `saturate(180%)`),`nil` = 不写 `saturate()` |
 | `shineOpacity` | `0.35` | 对角高光强度(0 = 关闭,1 = 最强)。在一段 `linear-gradient(135deg, 白 → 近透明 → 极淡黑)` 于基色之上,制造「晶莹剔透」的上光感 |
 | `rimOpacity` | `0.35` | **上边缘光**强度(0 = 关闭,1 = 最强)。在毛玻璃块顶缘画一条内侧微高光(`inset 0 1px`,挂在 `html` 上),提升「贴边高光」的精致感。早期版本还在底缘画对称内微光 + 整周发丝描边,在彩色玻璃底部会映出一条颜色不一样的 1~2px 浅色线,已移除 —— 现在只有顶部 |
-| 预设 `.light()` | — | 浅色毛玻璃(glass-card 风格):半透明白基 + `blur(20px) saturate(180%)` + 上边缘光,无高光渐变,最朴素常见 |
+| 预设 `.light()` | — | 浅色毛玻璃(glass-card 风格):半透明白基 + `blur(4px) saturate(180%)` + 上边缘光,无高光渐变,最朴素常见 |
 | 预设 `.dark()` | — | 深色毛玻璃:近黑基调,适合深色宿主 / 夜间模式 |
 | 预设 `.gradient()` | — | 渐变高级毛玻璃(glass-premium 风格):通透白基 + 135° 对角高光 + `saturate(180%)` + 内高光,「晶莹剔透」的高配版 |
-| 预设 `.fallback()` | — | 轻量毛玻璃(glass-fallback 风格):`blur(5px) saturate(180%)` + 基色 0.2,模糊档位最低、性能开销小,内容保留更多细节 |
+| 预设 `.fallback()` | — | 轻量毛玻璃(glass-fallback 风格):`blur(2px) saturate(180%)`,纯模糊不叠色(基色 `.clear`),模糊档位最低、性能开销小,内容保留更多细节 |
 | 预设 `.card()` | = `.gradient()` | 兼容别名 |
 | 预设 `.darkCard()` | = `.dark()` | 兼容别名 |
+
+##### 系统材质预设(SwiftUI `Material` / UIKit `UIBlurEffect` 映射)
+
+与上面 H5 卡片预设不同,系统材质预设是**扁平**毛玻璃:无对角高光 / 无上边缘光(`shineOpacity: 0`、`rimOpacity: 0`),只靠「模糊半径 + 自适应色调」的递进档位 —— `tintColor` 传 `nil`,浅色宿主下自动叠白基、深色宿主下自动叠近黑基,在宿主上即 iOS 系统常见的材质质感。整套预设两两参数不同,也不与上面四档重复:
+
+| 预设 | SwiftUI 对应 | UIKit 对应 | 参数(blur / 色调) |
+|---|---|---|---|
+| `.ultraThinMaterial()` | `Material.ultraThinMaterial` | `systemUltraThinMaterial` | `blur(2px)` / 0.08 · 最透 |
+| `.thinMaterial()` | `Material.thinMaterial` | `systemThinMaterial` | `blur(3px)` / 0.11 |
+| `.regularMaterial()` | `Material.regularMaterial` | `systemMaterial`(旧 `.regular`) | `blur(4px)` / 0.15 · 系统默认 |
+| `.bar()` | `Material.bar` | `systemChromeMaterial` | `blur(5px)` / 0.17 · 工具栏/标签栏默认 |
+| `.thickMaterial()` | `Material.thickMaterial` | `systemThickMaterial` | `blur(6px)` / 0.19 |
+| `.ultraThickMaterial()` | `Material.ultraThickMaterial` | `systemUltraThickMaterial`(旧 `.prominent` 近似) | `blur(8px)` / 0.25 · 最厚 |
+| `.extraLight()` | — | `extraLight` | `blur(4px)` / 白基 0.3 · 恒定浅色(不随系统深浅色) |
+| `.extraDark()` | — | `extraDark` | `blur(4px)` / 近黑基 0.4 · 恒定深色(不随系统深浅色) |
+
+```swift
+// 系统默认材质:对应 SwiftUI Material.regularMaterial / UIKit systemMaterial,自适应深浅色
+HTMLRichText(content: "……", config: .init(backgroundStyle: .frosted(.regularMaterial())))
+```
+
+##### 直接使用系统原生效果:传 `UIBlurEffect.Style` / SwiftUI `Material`
+
+上面是编译期写死的 **CSS 毛玻璃**档位。如果调用方**手里已经有一个系统值**要直接传进来,还有两个动态入口 —— 这两个入口**不走 CSS 翻译,直接渲染系统原生模糊**(`UIVisualEffectView` / SwiftUI `Material`),让 `HTMLRichTextFrostedStyle` 既支持自定义 CSS 参数、又支持系统自带效果:
+
+- `HTMLRichTextFrostedStyle.uiBlurEffect(_ style: UIBlurEffect.Style)` —— 返回一个只带 `systemEffect = .uiBlurEffect(style)` 的样式(1:1 保存系统档位,不做任何参数映射)。渲染时用 `UIVisualEffectView` 呈现,`*Light` / `*Dark` 等恒定变体的明暗由系统原生处理,与系统行为完全一致。
+- `HTMLRichTextFrostedStyle.material(_ material: Material)` —— 接收 SwiftUI 默认的模糊 `ShapeStyle`(`Material`)。**注意**:系统公开接口里 `Material` 是完全不透明的结构体(无 `Equatable` / 公开构造器,`==` 无法编译),公开 API 无法按值区分,本方法用 `Mirror(reflecting:)` 反射读取内部 `id`(`ultraThin` / `thin` / `regular` / `thick` / `ultraThick` / `systemBars`);识别失败时安全回落到 `.regularMaterial()`,不会崩溃。已在 iOS 26.4 模拟器实测六档全部正确渲染。
+
+**渲染行为**(样式携带 `systemEffect` 时,**`blurRadius` / `tintColor` / `tintColors` / `saturationAmount` / `shineOpacity` / `rimOpacity` 等 CSS 参数全部忽略**,也不会生成 backdrop-filter):
+
+- `HTMLRichText`(带内容):WebView 保持透明,CSS 输出完全透明背景,组件在 WebView **背后**叠一层原生效果层(`HTMLRichTextSystemEffectView`),文本照常渲染在原生模糊之上;
+- `HTMLRichTextFrostedView` / `HTMLRichTextGlassView`(纯玻璃):直接渲染原生效果层,整块铺满 —— 这个路径**不创建 WKWebView、不派生子进程**,性能更好。
+
+```swift
+// 直接把已有的系统值作为玻璃背景
+HTMLRichText(content: "……", config: .init(backgroundStyle: .frosted(.uiBlurEffect(.systemThinMaterial))))
+HTMLRichText(content: "……", config: .init(backgroundStyle: .frosted(.material(.regularMaterial))))
+```
+
+##### 性能实测:毛玻璃 vs 透明(仅 WebView 方案,2026-11-06,模拟器)
+
+同一批 **8 张** `HTMLRichText` 卡片(每张独立 WKWebView),`HRT_FROSTED=1` 走 `.frosted(.regularMaterial())`(blur 4px + saturate 1.8)、否则透明背景,其余完全一致;`HRT_AUTOSCROLL=1` 时在两组锚点间循环滚动,宿主进程侧按 0.5s 间隔采样 `ps` 累计 CPU 时间,取滚动循环内的 max / mean。运行环境:iOS 26.4 模拟器(iPhone 17)。
+
+| 指标 | 透明背景 | 毛玻璃(`.regularMaterial()`) | 差值 |
+|---|---|---|---|
+| App 进程 RSS(8 卡 + 1 玻璃视图) | 245.7 MB | 245.6 MB | ≈ 0 |
+| WebKit WebContent RSS(9 进程合计) | 1385.8 MB | 1387.4 MB | **+1.6 MB**(≈ +0.2 MB/卡) |
+| 含 GPU / Networking 扩展总内存 | 1668.4 MB | 1670.1 MB | +1.7 MB |
+| 滚动瞬时 CPU(app+WebContent+GPU+Net, max) | 28% | 28% | ≈ 0 |
+| 滚动瞬时 CPU(mean) | 19% | 16% | ≈ 0(噪声内) |
+
+结论:**8 张毛玻璃卡的 backdrop-filter 额外开销 ≈ 1.5~2 MB 内存、CPU 无可测差异** —— 模糊由 GPU 合成器承担,该量级下近似免费。注意两点:① 模拟器上每个 WKWebView 独占一个 WebContent 进程(约 157 MB/个),这是**模拟器/进程池假象**,真机共享进程池基线会低得多,但单卡 delta 应同量级;② 这套演示默认不渲染(需 `SIMCTL_CHILD_HRT_PERF=1`),demo 页面常开时只有第 13 节 1 个 WebView。
 
 #### 渐变方向(`HTMLRichTextGradientDirection`)
 
@@ -383,6 +443,47 @@ ZStack {
 - 与 `HTMLRichText` 一样依赖 `backdrop-filter` 能力,WebView 背后需要真实宿主内容才有效果。
 
 > 毛玻璃依赖 `backdrop-filter`(WebKit 已支持,`-webkit-` 前缀兼容),**要求 WebView 背后有宿主内容**(如放在有背景的视图上);WebView 全透明,模糊采样的正是透出来的宿主内容。组件高度仍等于内容高度,不受背景样式影响(高度测量含 `contentPadding`);上边缘光挂在 `html` 上(盒恒等于视口),不受 WebKit 内容偏移影响,恒对齐组件顶缘。文字与玻璃边缘之间的内边距用 `contentPadding` 配置(默认 0):玻璃/纯色背景一直铺满整块,只有文字相对内缩。完全不支持 `backdrop-filter` 的引擎自动降级为半透明白基色(与 `.fallback()` 预设的「低档模糊」是两码事 —— 那是引擎级最后兜底),内容依然可读。
+
+### 玻璃包装层(`HTMLRichTextGlassView`)
+
+在 `HTMLRichTextFrostedView` 之上再封一层的可选玻璃入口:**玻璃效果可选,默认仍是毛玻璃**。想在高版本用系统原生玻璃、低版本用毛玻璃时,传 `.glass(...)` 即可 —— 组件在支持 `glassEffect` 的系统版本(iOS 26+ / macOS 26+ 等)上自动切到 SwiftUI 原生玻璃,旧版本自动退回每种档位对应的毛玻璃兜底,不需要调用方做任何 `#available` 分支。
+
+```swift
+// 默认:恒定毛玻璃(等价旧视图 HTMLRichTextFrostedView(style: .light()))
+HTMLRichTextGlassView()
+
+// 高版本原生玻璃(玻璃面自带圆角),低版本自动退回毛玻璃
+HTMLRichTextGlassView(style: .glass(.regular), cornerRadius: 12)
+
+// 染色玻璃:玻璃面叠一层青色(深色宿主下尤其明显)
+HTMLRichTextGlassView(style: .glass(.tinted(.cyan)), cornerRadius: 16)
+
+// 恒定毛玻璃(显式指定档位)
+HTMLRichTextGlassView(style: .frosted(.thinMaterial()))
+```
+
+样式由 `HTMLRichTextGlassStyle` 提供,两种:
+
+| 样式 | 行为 |
+| --- | --- |
+| `.frosted(HTMLRichTextFrostedStyle)` | 恒定毛玻璃(backdrop-filter 链路),所有系统版本可用 —— **默认** |
+| `.glass(HTMLRichTextGlassEffect)` | 高版本原生玻璃(`glassEffect`),低版本自动退回该档位的毛玻璃 |
+
+玻璃档位由 `HTMLRichTextGlassEffect` 提供,一一对应 SwiftUI `Glass`:
+
+| 档位 | SwiftUI 映射 | 低版本兜底毛玻璃(`fallbackFrostedStyle`) |
+| --- | --- | --- |
+| `.regular` | `Glass.regular`(默认玻璃) | `.regularMaterial()`(系统默认材质档) |
+| `.clear` | `Glass.clear`(不叠色调、最通透) | `.ultraThinMaterial()`(纯模糊不叠色) |
+| `.tinted(Color)` | `Glass.regular.tint(color)`(染色) | 同色调毛玻璃(`blur 4` + `tintColor` + `tintOpacity 0.05` + `saturate 180%`) |
+| `.interactive` | `Glass.regular.interactive()`(随触摸弹性反馈) | `.regularMaterial()` |
+| `.tintedInteractive(Color)` | `Glass.regular.tint(color).interactive()` | 同 `.tinted` 的毛玻璃兜底 |
+
+要点:
+- 入口 `HTMLRichTextGlassView(style: HTMLRichTextGlassStyle = .frosted(.light()), colorScheme: ColorScheme? = nil, cornerRadius: CGFloat = 0)`;
+- **高度必须由宿主给定**(`.frame(height:)` 或外部约束),视图强制铺满传入宽高(与 `HTMLRichTextFrostedView` 相同);
+- `cornerRadius` **只作用于原生玻璃路径**(`glassEffect` 的 `in:` 形状,玻璃面自带圆角,比宿主 `clipShape` 裁出的硬边更自然);`.frosted(...)` 路径的圆角仍由宿主 `.clipShape(...)` 负责(与旧视图同一哲学);
+- `colorScheme` 只影响毛玻璃路径(原生玻璃自适应)。
 
 ## 高度与滚动(适配任意外层容器)
 
@@ -529,8 +630,9 @@ HTMLRichText(
 8. 配套工具类(`HTMLRichTextTools`:预估高度 / HEX 取色 / 行内 CSS);
 9. 图片交互与样式细化(内联 / 块级卡片 / 左浮动图文混排、点击禁用、长按回调、边框 / 背景 / 外边距预设);
 10. 预估高度收身 / 高度缓存;
-11. 背景样式(毛玻璃 `.frosted` 四种预设 `.light()` / `.dark()` / `.gradient()` / `.fallback()` 叠加彩色 / 深色宿主、纯色 `.solid`、渐变色调 `tintColors` + `tintDirection` 中心放射);
-12. 无文本毛玻璃视图(`HTMLRichTextFrostedView` 浅 / 深 / 渐变色调 / 大半径模糊多档)。
+11. 背景样式(毛玻璃 `.frosted` 预设:浅色 `.light()` / 深色 `.dark()` / 渐变 `.gradient()` / 轻量 `.fallback()` + 系统材质 `.regularMaterial()` 等、纯色 `.solid`、渐变色调 `tintColors` + `tintDirection` 中心放射);
+12. 无文本毛玻璃视图(`HTMLRichTextFrostedView` 浅 / 深 / 渐变色调 / 大半径模糊 / 系统材质档位多档);
+13. 玻璃包装层(`HTMLRichTextGlassView`:默认毛玻璃 / 高版本原生玻璃可选 —— `.regular` 普通玻璃、`.clear` 透明玻璃、`.interactive` 交互玻璃、`.tinted(.cyan)` 染色玻璃,低版本自动退回毛玻璃)。
 
 构建:
 

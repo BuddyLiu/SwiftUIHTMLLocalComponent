@@ -6,16 +6,25 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ContentView: View {
 
     @State private var lastTap: String = "点击下方链接或 data-tap 卡片试试 👇"
     @State private var lastState: String = "生命周期:—"
+    @State private var autoDetailIndex: Int?
 
     var body: some View {
+        NavigationView { demoContent }
+            .overlay { FrostedGlassHost() }
+    }
+
+    /// 演示主体:滚动展示各小节;毛玻璃样式库(第 15 小节)点行跳转子页,
+    /// 玻璃由 body 里的全局宿主统一渲染(同一时刻最多一块)。
+    private var demoContent: some View {
         VStack {
-            tapBanner.id(0)
-                .padding(.horizontal, 16)
+//            tapBanner.id(0)
+//                .padding(.horizontal, 16)
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
@@ -254,7 +263,7 @@ struct ContentView: View {
                         .id(10)
 
                         SectionCard("1️⃣1️⃣ 背景样式:毛玻璃 / 纯色") {
-                            Text("· 毛玻璃(`backgroundStyle: .frosted`):WebView 保持透明,`backdrop-filter` 把背后的宿主内容模糊透出;预设 `.light()` / `.dark()` / `.gradient()` / `.fallback()` 覆盖浅色 / 深色 / 渐变 / 轻量四档")
+                            Text("· 毛玻璃(`backgroundStyle: .frosted`):WebView 保持透明,`backdrop-filter` 把背后的宿主内容模糊透出;预设 `.light()` / `.dark()` / `.gradient()` / `.fallback()` 覆盖浅色 / 深色 / 渐变 / 轻量四档,另有系统材质档 `.regularMaterial()` 等(对应 `Material` / `UIBlurEffect`)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             ZStack(alignment: .topLeading) {
@@ -337,7 +346,7 @@ struct ContentView: View {
                         .id(11)
 
                         SectionCard("1️⃣2️⃣ 无文本毛玻璃视图(HTMLRichTextFrostedView)") {
-                            Text("SwiftUI 原生 `.ultraThinMaterial` 等模糊不可调;`HTMLRichTextFrostedView` 复用 backdrop-filter 链路,模糊半径 / 饱和度 / 色调渐变 / 高光全可调。玻璃铺满宿主给的 frame,圆角由宿主 .clipShape 负责。")
+                            Text("SwiftUI 原生 `.ultraThinMaterial` 等模糊不可调;`HTMLRichTextFrostedView` 复用 backdrop-filter 链路,模糊半径 / 饱和度 / 色调渐变 / 高光全可调。预设也有系统材质档(`.thinMaterial()` / `.regularMaterial()` 等,对应 `Material` / `UIBlurEffect`)。玻璃铺满宿主给的 frame,圆角由宿主 .clipShape 负责。")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
 
@@ -414,19 +423,266 @@ struct ContentView: View {
                             .frame(height: 140)
                             .clipShape(RoundedRectangle(cornerRadius: 20))
                             .padding(.top, 8)
+
+                            Text("· 系统材质预设:`.thinMaterial()` 浅色宿主(自适应白基)/ `.ultraThickMaterial()` 深色宿主(自适应近黑基)—— 扁平无高光无边缘光,档位对应 SwiftUI `Material` 与 UIKit `system*Material`")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                                .id("frosted-material")
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.mint, .cyan, .blue, .indigo],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.yellow).frame(width: 60, height: 60).offset(x: 196, y: 12)
+                                Circle().fill(.orange).frame(width: 40, height: 40).offset(x: 48, y: 88)
+                                HTMLRichTextFrostedView(style: .thinMaterial())
+                                    .overlay(alignment: .center) {
+                                        Text(".thinMaterial():blur(12) saturate(1.8),自适应白基(浅色宿主)")
+                                            .font(.caption2)
+                                            .foregroundStyle(.black.opacity(0.6))
+                                            .padding(10)
+                                    }
+                            }
+                            .frame(height: 130)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.top, 8)
+
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.black, .gray.opacity(0.6), .indigo.opacity(0.9)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.pink).frame(width: 56, height: 56).offset(x: 200, y: 12)
+                                Circle().fill(.cyan).frame(width: 40, height: 40).offset(x: 44, y: 88)
+                                HTMLRichTextFrostedView(style: .ultraThickMaterial())
+                                    .overlay(alignment: .center) {
+                                        Text(".ultraThickMaterial():blur(30),自适应近黑基(深色宿主)")
+                                            .font(.caption2)
+                                            .foregroundStyle(.white.opacity(0.85))
+                                            .padding(10)
+                                    }
+                            }
+                            .frame(height: 130)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .padding(.top, 8)
                         }
                         .id(12)
+
+                        SectionCard("1️⃣3️⃣ 玻璃包装层(HTMLRichTextGlassView):原生玻璃可选 / 自动退回毛玻璃") {
+                            Text("在 `HTMLRichTextFrostedView` 上再封一层:默认仍是毛玻璃(`.frosted`,所有版本可用);传入 `.glass(.regular)` 等即可在高版本(iOS 26+)用 SwiftUI 原生 `glassEffect`,低版本自动退回 `HTMLRichTextGlassEffect.fallbackFrostedStyle` 的毛玻璃档位。玻璃效果支持多种枚举配置:`.regular` / `.clear` / `.tinted(color)` / `.interactive` / `.tintedInteractive(color)`。`cornerRadius` 只作用于原生玻璃路径(玻璃面自带圆角),毛玻璃路径圆角仍由宿主 clipShape。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            Text("· `.glass(.XXXX)`:高版本原生玻璃(浅色宿主),低版本自动退回毛玻璃(.regularMaterial 档)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.pink, .orange, .yellow, .green],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.purple).frame(width: 70, height: 70).offset(x: 210, y: 8)
+                                Circle().fill(.blue).frame(width: 46, height: 46).offset(x: 30, y: 84)
+                                VStack(spacing: 0) {
+                                    HTMLRichTextGlassView(style: .glass(.regular), cornerRadius: 0)
+                                        .overlay(alignment: .center) {
+                                            Text(".glass(.regular):iOS26+ 原生普通玻璃,低版本退回毛玻璃")
+                                                .font(.caption2)
+                                                .foregroundStyle(.black.opacity(0.6))
+                                                .padding(10)
+                                        }
+                                    HTMLRichTextGlassView(style: .glass(.clear), cornerRadius: 0)
+                                        .overlay(alignment: .center) {
+                                            Text(".glass(.clear):iOS26+ 原生透明玻璃,低版本退回毛玻璃")
+                                                .font(.caption2)
+                                                .foregroundStyle(.black.opacity(0.6))
+                                                .padding(10)
+                                        }
+                                    HTMLRichTextGlassView(style: .glass(.interactive), cornerRadius: 0)
+                                        .overlay(alignment: .center) {
+                                            Text(".glass(.interactive):iOS26+ 原生交互玻璃,低版本退回毛玻璃")
+                                                .font(.caption2)
+                                                .foregroundStyle(.black.opacity(0.6))
+                                                .padding(10)
+                                        }
+                                }
+                            }
+                            .frame(height: 130)
+                            .background(.ultraThinMaterial)
+                            
+                            Text("· `.glass(.tinted(.cyan))`:染色玻璃(深色宿主),玻璃面叠一层青色")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.black, .gray.opacity(0.7), .purple.opacity(0.9)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.pink).frame(width: 60, height: 60).offset(x: 210, y: 10)
+                                Circle().fill(.cyan).frame(width: 44, height: 44).offset(x: 40, y: 90)
+                                HTMLRichTextGlassView(style: .glass(.tinted(.cyan)), cornerRadius: 16)
+                                    .overlay(alignment: .center) {
+                                        Text(".glass(.tinted(.cyan)):染色玻璃 · 深色宿主")
+                                            .font(.caption2)
+                                            .foregroundStyle(.white.opacity(0.85))
+                                            .padding(10)
+                                    }
+                            }
+                            .frame(height: 130)
+                            .padding(.top, 8)
+
+                            Text("· 默认仍是毛玻璃:`HTMLRichTextGlassView()` = `.frosted(.light())`,行为与旧视图完全一致")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                            ZStack(alignment: .topLeading) {
+                                LinearGradient(
+                                    colors: [.mint, .cyan, .blue, .indigo],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                                Circle().fill(.yellow).frame(width: 60, height: 60).offset(x: 196, y: 12)
+                                Circle().fill(.orange).frame(width: 40, height: 40).offset(x: 48, y: 88)
+                                HTMLRichTextGlassView()
+                                    .overlay(alignment: .center) {
+                                        Text("默认 `HTMLRichTextGlassView()` = `.frosted(.light())` 毛玻璃")
+                                            .font(.caption2)
+                                            .foregroundStyle(.black.opacity(0.6))
+                                            .padding(10)
+                                    }
+                            }
+                            .frame(height: 130)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.top, 8)
+                        }
+                        .id(13)
+
+                        if Self.perfSectionEnabled {
+                            SectionCard("1️⃣4️⃣ 性能测量:毛玻璃 vs 透明(仅 WebView 方案)") {
+                                Text("同一批 8 张 `HTMLRichText` 卡片(每张独立 WKWebView):`HRT_PERF=1` 显示本节、`HRT_FROSTED=1` 走 `.frosted(.regularMaterial())` 毛玻璃、否则透明背景;`HRT_AUTOSCROLL=1` 在 perf-top ↔ perf-bottom 间循环滚动,便于宿主取样滚动时的重合成 CPU。其余环境变量、卡片内容、宽度完全一致。")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .id("perf-top")
+
+                                ForEach(0..<8, id: \.self) { index in
+                                    HTMLRichText(content: Self.perfText(index: index))
+                                        .baseStyle(.init(
+                                            contentPadding: 12,
+                                            backgroundStyle: Self.isFrosted ? .frosted(.regularMaterial()) : .transparent
+                                        ))
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .id("perf-bottom")
+                            }
+                            .id(14)
+                        }
+                        
+                        let blurCases: [(style: HTMLRichTextGlassStyle, label: String)] = [
+                            (.frosted(.uiBlurEffect(.systemUltraThinMaterial)),      ".systemUltraThinMaterial"),
+                            (.frosted(.uiBlurEffect(.systemThinMaterial)),          ".systemThinMaterial"),
+                            (.frosted(.uiBlurEffect(.systemMaterial)),              ".systemMaterial"),
+                            (.frosted(.uiBlurEffect(.systemThickMaterial)),         ".systemThickMaterial"),
+                            (.frosted(.uiBlurEffect(.systemChromeMaterial)),        ".systemChromeMaterial"),
+                            (.frosted(.uiBlurEffect(.systemUltraThinMaterialLight)), ".systemUltraThinMaterialLight(恒定浅色)"),
+                            (.frosted(.uiBlurEffect(.systemThinMaterialLight)),     ".systemThinMaterialLight(恒定浅色)"),
+                            (.frosted(.uiBlurEffect(.systemMaterialLight)),         ".systemMaterialLight(恒定浅色)"),
+                            (.frosted(.uiBlurEffect(.systemThickMaterialLight)),    ".systemThickMaterialLight(恒定浅色)"),
+                            (.frosted(.uiBlurEffect(.systemChromeMaterialLight)),   ".systemChromeMaterialLight(恒定浅色)"),
+                            (.frosted(.uiBlurEffect(.systemUltraThinMaterialDark)), ".systemUltraThinMaterialDark(恒定深色)"),
+                            (.frosted(.uiBlurEffect(.systemThinMaterialDark)),      ".systemThinMaterialDark(恒定深色)"),
+                            (.frosted(.uiBlurEffect(.systemMaterialDark)),          ".systemMaterialDark(恒定深色)"),
+                            (.frosted(.uiBlurEffect(.systemThickMaterialDark)),     ".systemThickMaterialDark(恒定深色)"),
+                            (.frosted(.uiBlurEffect(.systemChromeMaterialDark)),    ".systemChromeMaterialDark(恒定深色)"),
+                            (.frosted(.uiBlurEffect(.extraLight)),                  ".extraLight(白0.3)"),
+                            (.frosted(.uiBlurEffect(.light)),                       ".light"),
+                            (.frosted(.uiBlurEffect(.dark)),                        ".dark"),
+                            (.frosted(.uiBlurEffect(.regular)),                     ".regular"),
+                            (.frosted(.uiBlurEffect(.prominent)),                   ".prominent"),
+                            (.frosted(.material(.ultraThinMaterial)),               "M .ultraThinMaterial"),
+                            (.frosted(.material(.thinMaterial)),                    "M .thinMaterial"),
+                            (.frosted(.material(.regularMaterial)),                 "M .regularMaterial"),
+                            (.frosted(.material(.thickMaterial)),                   "M .thickMaterial"),
+                            (.frosted(.material(.ultraThickMaterial)),              "M .ultraThickMaterial"),
+                            (.frosted(.material(.bar)),                             "M .bar"),
+                            // HTMLRichTextFrostedStyle 直接预设(工厂方法,全部 14 个)
+                            (.frosted(.light()),                                    "Style .light()(H5 浅色)"),
+                            (.frosted(.dark()),                                     "Style .dark()(H5 深色)"),
+                            (.frosted(.gradient()),                                 "Style .gradient()(H5 premium)"),
+                            (.frosted(.fallback(16)),                                 "Style .fallback()(blur2 轻量16)"),
+                            (.frosted(.fallback(8)),                                  "Style .fallback()(blur2 轻量8)"),
+                            (.frosted(.fallback(4)),                                  "Style .fallback()(blur2 轻量4)"),
+                            (.frosted(.fallback(2)),                                  "Style .fallback()(blur2 轻量2)"),
+                            (.frosted(.fallback(1)),                                  "Style .fallback()(blur2 轻量1)"),
+                            (.frosted(.fallback(0.5)),                                "Style .fallback()(blur2 轻量0.5)"),
+                            (.frosted(
+                                HTMLRichTextFrostedStyle(
+                                    blurRadius: 4,
+                                    tintColor: .white,
+                                    tintOpacity: 0.1,
+                                    saturationAmount: 1.8,
+                                    shineOpacity: 0,
+                                    rimOpacity: 0)),                                  "Style .custom() blurRadius: 2, tintColor: .white, tintOpacity: 0.1, saturationAmount: 1.8, shineOpacity: 0, rimOpacity: 0"),
+                            (.frosted(.extraLight()),                               "Style .extraLight()(恒定浅色)"),
+                            (.frosted(.extraDark()),                                "Style .extraDark()(恒定深色)"),
+                            (.frosted(.ultraThinMaterial()),                        "Style .ultraThinMaterial()"),
+                            (.frosted(.thinMaterial()),                             "Style .thinMaterial()"),
+                            (.frosted(.regularMaterial()),                          "Style .regularMaterial()"),
+                            (.frosted(.bar()),                                      "Style .bar()"),
+                            (.frosted(.thickMaterial()),                            "Style .thickMaterial()"),
+                            (.frosted(.ultraThickMaterial()),                       "Style .ultraThickMaterial()"),
+                            (.frosted(.card()),                                     "Style .card()(= .gradient() 别名)"),
+                            (.frosted(.darkCard()),                                 "Style .darkCard()(= .dark() 别名)"),
+                        ]
+                        
+                        SectionCard("1️⃣5️⃣ 毛玻璃样式库:全局共用一块玻璃 · 点行跳转子页逐档查看") {
+                            Text("从这里开始不再是「每格一块玻璃」:全部样式由**全局唯一**的玻璃宿主渲染 —— 同一时刻最多创建一块毛玻璃(一个 WKWebView),换页面 / 换样式时复用并刷新。点击下面的行进入子页,单独查看「背景文字」透过该档玻璃的实际样子;`HRT_FROST_DETAIL=N` 可启动后自动跳到第 N 行,`HRT_FROST_CYCLE=1` 时子页每 2.5s 自动轮换下一档,验证「创建一次、换样式刷新」。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            ForEach(Array(blurCases.enumerated()), id: \.offset) { index, item in
+                                NavigationLink(destination: FrostedStyleDetailPage(
+                                    style: item.style,
+                                    label: item.label,
+                                    index: index,
+                                    cases: blurCases
+                                )) {
+                                    FrostedStyleRow(label: item.label)
+                                }
+                            }
+                        }
+                        .id(15)
+                        .background {
+                            // 模拟器无法脚本化点击:HRT_FROST_DETAIL=N 启动后自动跳到第 N 行子页。
+                            // 放卡片 background:blurCases 在该作用域可见(VStack 级 background
+                            // 在内容闭包之外,访问不到这个局部数组)。
+                            if let target = Self.autoPushIndex, blurCases.indices.contains(target) {
+                                NavigationLink(
+                                    destination: FrostedStyleDetailPage(
+                                        style: blurCases[target].style,
+                                        label: blurCases[target].label,
+                                        index: target,
+                                        cases: blurCases
+                                    ),
+                                    tag: target,
+                                    selection: $autoDetailIndex
+                                ) { EmptyView() }
+                            }
+                        }
                     }
                     .padding(16)
-                }
-                .task {
-                    // 演示辅助:启动时可通过环境变量 HRT_SCROLL=4 快速定位到指定小节
-                    if let raw = ProcessInfo.processInfo.environment["HRT_SCROLL"],
-                       let index = Int(raw) {
-                        try? await Task.sleep(nanoseconds: 600_000_000)
-                        withAnimation(.easeInOut(duration: 0.35)) {
-                            proxy.scrollTo(index, anchor: .top)
+                    .task(id: Self.autoscrollEnabled ? 1 : 0) {
+                        guard Self.perfSectionEnabled, Self.autoscrollEnabled else { return }
+                        while !Task.isCancelled {
+                            withAnimation(.linear(duration: 0.45)) { proxy.scrollTo("perf-top", anchor: .top) }
+                            try? await Task.sleep(nanoseconds: 750_000_000)
+                            withAnimation(.linear(duration: 0.45)) { proxy.scrollTo("perf-bottom", anchor: .bottom) }
+                            try? await Task.sleep(nanoseconds: 750_000_000)
                         }
+                    }
+                    .task {
+                        if let target = Self.autoPushIndex { autoDetailIndex = target }
                     }
                 }
             }   // end ScrollViewReader
@@ -505,6 +761,44 @@ struct ContentView: View {
         return bundle.bundleURL
     }
 
+    // MARK: - 性能测量辅助(第 14 小节,全部按环境变量开关,默认不渲染)
+
+    /// `HRT_PERF=1` 时显示第 14 小节(8 张性能测量卡片)。默认关闭,保证演示
+    /// 页面零额外 WebView 开销;需要复测时启动加 `SIMCTL_CHILD_HRT_PERF=1`。
+    private static var perfSectionEnabled: Bool {
+        ProcessInfo.processInfo.environment["HRT_PERF"] == "1"
+    }
+
+    /// `HRT_FROSTED=1` 时第 14 小节全部卡片走毛玻璃(`.frosted(.regularMaterial())`),
+    /// 否则用默认透明背景 —— 两张配置除了这一点以外完全相同。
+    private static var isFrosted: Bool {
+        ProcessInfo.processInfo.environment["HRT_FROSTED"] == "1"
+    }
+
+    /// `HRT_AUTOSCROLL=1` 时在 perf-top ↔ perf-bottom 间循环滚动,供宿主取样
+    /// 滚动时的瞬时 CPU(毛玻璃 blur 需要每帧重合成,透明背景则几乎无开销)。
+    private static var autoscrollEnabled: Bool {
+        ProcessInfo.processInfo.environment["HRT_AUTOSCROLL"] == "1"
+    }
+
+    /// `HRT_FROST_DETAIL=N`:启动后自动跳转到第 N 个毛玻璃子页(模拟器无法
+    /// 脚本化点击,用环境变量代替)。
+    private static var autoPushIndex: Int? {
+        guard let raw = ProcessInfo.processInfo.environment["HRT_FROST_DETAIL"],
+              let index = Int(raw) else { return nil }
+        return index
+    }
+
+    /// `HRT_FROST_CYCLE=1`:毛玻璃子页每 2.5s 轮换下一档样式,验证
+    /// 「同一块玻璃、换样式刷新」(创建一次)。子页类型需要读取,故为 fileprivate。
+    fileprivate static var cycleEnabled: Bool {
+        ProcessInfo.processInfo.environment["HRT_FROST_CYCLE"] == "1"
+    }
+
+    private static func perfText(index: Int) -> String {
+        "性能测量卡片 \(index + 1):这段文字用于制造足够的排版负载,让毛玻璃(backdrop-filter: blur(16px) saturate(1.8))与透明背景在滚动时的重合成开销差异可测。包含普通文本、加粗、链接、行内代码与颜色,撑满卡片宽度。"
+    }
+
     private static func describe(_ state: HTMLRichTextWebState) -> String {
         switch state {
         case .loading: return "loading(开始加载)"
@@ -551,6 +845,178 @@ private struct SectionCard<Content: View>: View {
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color(.secondarySystemBackground))
         )
+    }
+}
+
+// MARK: - 全局共用毛玻璃(页面跳转子页分别查看)
+
+/// 全局共用玻璃宿主的状态:同一时刻最多一块毛玻璃。
+/// 子页出现时 `show` 报告样式 + 卡片全局 frame + 圆角,宿主据此精确摆位;
+/// 离开时 `hide`,玻璃销毁(不占 WebContent 进程)。
+private final class FrostedGlassModel: ObservableObject {
+    static let shared = FrostedGlassModel()
+    @Published var config: (style: HTMLRichTextGlassStyle, frame: CGRect, cornerRadius: CGFloat)?
+    func show(style: HTMLRichTextGlassStyle, frame: CGRect, cornerRadius: CGFloat) {
+        config = (style, frame, cornerRadius)
+    }
+    func hide() { config = nil }
+}
+
+/// 挂在 NavigationView 上的玻璃宿主:按模型给定的全局 frame 摆位。
+/// `config == nil` 时渲染透明占位(不创建 WebView)。
+private struct FrostedGlassHost: View {
+    @ObservedObject var model = FrostedGlassModel.shared
+
+    var body: some View {
+        GeometryReader { hostProxy in
+            let host = hostProxy.frame(in: .global)
+            if let config = model.config {
+                // 圆角统一走宿主:毛玻璃路径由 clipShape 裁圆角;
+                // 原生玻璃路径同半径的玻璃面 + 再裁一层,视觉一致。
+                HTMLRichTextGlassView(style: config.style, cornerRadius: config.cornerRadius)
+                    .frame(
+                        width: max(1, config.frame.width),
+                        height: max(1, config.frame.height),
+                        alignment: .top
+                    )
+                    .position(
+                        x: config.frame.midX - host.minX,
+                        y: config.frame.midY - host.minY
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous))
+                    .allowsHitTesting(false)
+            } else {
+                Color.clear
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// 报告宿主视图在全局坐标里的 frame;推入动画 / 布局变化会持续重报。
+private struct FrameReporter: View {
+    let onFrame: (CGRect) -> Void
+
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onAppear { onFrame(proxy.frame(in: .global)) }
+                .onChange(of: proxy.frame(in: .global)) { f in onFrame(f) }
+        }
+    }
+}
+
+/// 子页:单独查看某一档毛玻璃 / 玻璃效果。整卡玻璃由全局宿主渲染,
+/// 本页只负责报告卡片位置 + 提供玻璃下方的「背景文字」供模糊采样。
+private struct FrostedStyleDetailPage: View {
+    let label: String
+    let index: Int
+    let cases: [(style: HTMLRichTextGlassStyle, label: String)]
+
+    @State private var shownStyle: HTMLRichTextGlassStyle
+    @State private var currentLabel: String
+    @State private var cardFrame: CGRect = .zero
+
+    init(
+        style: HTMLRichTextGlassStyle,
+        label: String,
+        index: Int,
+        cases: [(style: HTMLRichTextGlassStyle, label: String)]
+    ) {
+        self.label = label
+        self.index = index
+        self.cases = cases
+        _shownStyle = State(initialValue: style)
+        _currentLabel = State(initialValue: label)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("当前样式:\(currentLabel)")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+
+                ZStack {
+                    LinearGradient(
+                        colors: [.purple.opacity(0.8), .pink.opacity(0.55), .teal.opacity(0.6), .orange.opacity(0.45)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                    VStack(spacing: 10) {
+                        Text("背景文字")
+                            .font(.system(size: 30, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.black.opacity(0.75))
+                        Text("第二行细节文字 0123456789 ABCDEFG")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(.black.opacity(0.55))
+                        Text("第三行:更小更细的内容,检验不同档位的模糊与透出。")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.black.opacity(0.45))
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 240)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .background(
+                    FrameReporter { frame in
+                        cardFrame = frame
+                        FrostedGlassModel.shared.show(style: shownStyle, frame: frame, cornerRadius: 18)
+                    }
+                )
+
+                Text("玻璃 = 全局宿主的同一块(每次进页创建一次,换样式 / 换页面复用刷新)。圆角统一由宿主负责(跟随卡片 18pt),`.glass(...)` 档另有同半径玻璃面。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text("样式 #\(index + 1)/\(cases.count)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(16)
+        }
+        .navigationTitle(label)
+        .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { FrostedGlassModel.shared.hide() }
+        .task {
+            guard ContentView.cycleEnabled else { return }
+            var i = index
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                i = (i + 1) % cases.count
+                currentLabel = cases[i].label
+                shownStyle = cases[i].style
+                if cardFrame != .zero {
+                    FrostedGlassModel.shared.show(style: shownStyle, frame: cardFrame, cornerRadius: 18)
+                }
+            }
+        }
+    }
+}
+
+/// 样式库列表行:静态渐变色块 + 样式名 + 箭头(不放真实玻璃,避免每行再起 WebView)。
+private struct FrostedStyleRow: View {
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(LinearGradient(
+                    colors: [.purple, .pink, .teal, .orange],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+                .frame(width: 14, height: 14)
+            Text(label)
+                .font(.subheadline)
+                .lineLimit(2)
+                .foregroundStyle(.primary)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 2)
     }
 }
 

@@ -291,6 +291,15 @@ public struct HTMLRichText: View {
             // WKWebView 会把滚动内容尺寸当作 intrinsicContentSize,一旦宽度可伸缩,
             // 会陷入"文档宽度→布局宽度"的反馈循环,导致高度暴涨。
             .frame(width: proxy.size.width, height: displayHeight, alignment: .top)
+            // 系统原生毛玻璃:配置了 systemEffect 时,文档是完全透明的(见 Template CSS),
+            // 真正的玻璃由这块原生层提供 —— 铺在透明 WebView 背后,内容在上、玻璃在下,
+            // 由 UIVisualEffectView / Material 模糊透出背后的宿主内容。
+            .background {
+                if case .frosted(let style) = config.effectiveBackgroundStyle,
+                   let effect = style.systemEffect {
+                    HTMLRichTextSystemEffectView(effect: effect)
+                }
+            }
             // 注意:不要对承载 WKWebView 的视图做 SwiftUI 的 .opacity 动画 —— 透明度的
             // 插值帧会扰动 WebKit 远程合成层,导致内容(尤其 takeSnapshot 已经画出来的
             // 图片)在渐变途中再次丢失。内容淡入已在文档内部完成(CSS body.opacity:0 →
